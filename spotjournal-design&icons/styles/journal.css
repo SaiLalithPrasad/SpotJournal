@@ -1,0 +1,208 @@
+/* ============================================================
+   SpotJournal — journal-specific styles
+   The "inhabitable paper" layer on top of StoveTop tokens.
+   ============================================================ */
+
+/* Paper — a cream page with a VERY subtle fiber grain.
+   Implemented via two layered SVG noise textures so it reads
+   as paper, not as CSS noise. Kept under 6% opacity. */
+.paper {
+  background-color: var(--paper-bg, #F5EFE0);
+  background-image:
+    /* fine fiber grain */
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='4' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.35  0 0 0 0 0.28  0 0 0 0 0.18  0 0 0 0.055 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"),
+    /* occasional longer fibers */
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='520' height='520'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.018' numOctaves='2' seed='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.30  0 0 0 0 0.22  0 0 0 0 0.14  0 0 0 0.04 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 240px 240px, 520px 520px;
+}
+
+.theme-dark .paper {
+  background-color: var(--paper-bg, #25211C);
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='4' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.95  0 0 0 0 0.90  0 0 0 0 0.80  0 0 0 0.05 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='520' height='520'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.018' numOctaves='2' seed='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 0.92  0 0 0 0 0.80  0 0 0 0.03 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+/* Subtle cream-page edge — pages stack inside the "book" */
+.paper-edge {
+  box-shadow:
+    inset 0 0 0 1px rgba(120, 90, 50, 0.06),
+    inset 0 -1px 0 0 rgba(120, 90, 50, 0.08);
+}
+
+/* Ink color — slightly warmer than fg-1, reads as fountain-pen on cream */
+.ink-1 { color: #2A241C; }
+.ink-2 { color: #5A4E3C; }
+.ink-3 { color: #8A7E6A; }
+
+.theme-dark .ink-1 { color: #EBE5D4; }
+.theme-dark .ink-2 { color: #B5AC95; }
+.theme-dark .ink-3 { color: #7D7460; }
+
+/* Small-caps typeset bottom-of-page timestamp */
+.typeset {
+  font-family: var(--font-serif-display);
+  font-feature-settings: "smcp" 1, "c2sc" 1, "onum" 1;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.18em;
+  font-weight: 500;
+}
+
+/* Photo tape — two pieces of warm semi-translucent washi tape */
+.tape {
+  position: absolute;
+  width: 62px;
+  height: 18px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.05) 100%),
+    rgba(232, 210, 160, 0.72);
+  box-shadow:
+    0 1px 2px rgba(0,0,0,0.08),
+    inset 0 0 0 0.5px rgba(160, 130, 70, 0.25);
+  /* frayed edges via pixelated mask */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 4px, #000 calc(100% - 4px), transparent 100%);
+          mask-image: linear-gradient(90deg, transparent 0, #000 4px, #000 calc(100% - 4px), transparent 100%);
+}
+.theme-dark .tape {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.02) 100%),
+    rgba(180, 150, 95, 0.45);
+  box-shadow:
+    0 1px 2px rgba(0,0,0,0.3),
+    inset 0 0 0 0.5px rgba(220, 190, 120, 0.15);
+}
+
+/* Pasted photo — slight rotation, soft drop shadow, cream border.
+   The emulsion inset adds just a hint of dimension. */
+.photo-paste {
+  position: relative;
+  background: #d9c9a8; /* warm placeholder */
+  box-shadow:
+    0 2px 3px rgba(70, 45, 20, 0.10),
+    0 12px 24px rgba(70, 45, 20, 0.14),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+.theme-dark .photo-paste {
+  box-shadow:
+    0 2px 3px rgba(0, 0, 0, 0.35),
+    0 12px 24px rgba(0, 0, 0, 0.45),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* The photo's inner image layer */
+.photo-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Caption text — reads as "written" but always typed.
+   Class is set by the user's chosen typeface in Settings. */
+.ink-serif {
+  font-family: var(--font-serif-display);
+  font-optical-sizing: auto;
+  font-weight: 400;
+  letter-spacing: -0.005em;
+}
+.ink-sans {
+  font-family: var(--font-sans);
+  font-weight: 400;
+}
+.ink-hand {
+  /* warm informal handwritten — Caveat is a reasonable proxy */
+  font-family: 'Caveat', 'Inkfree', 'Segoe Print', cursive;
+  font-weight: 500;
+}
+
+/* FAB — floating circle for camera */
+.fab {
+  width: 68px;
+  height: 68px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--fg-on-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 1px 2px rgba(70, 45, 20, 0.2),
+    0 10px 28px rgba(217, 119, 87, 0.40),
+    inset 0 0 0 1px rgba(255,255,255,0.15);
+  cursor: pointer;
+  transition: transform 120ms var(--ease-standard),
+              background 120ms var(--ease-standard);
+}
+.fab:active {
+  transform: scale(0.96);
+  background: var(--accent-press);
+}
+.theme-dark .fab {
+  box-shadow:
+    0 1px 2px rgba(0,0,0,0.4),
+    0 10px 28px rgba(224, 138, 108, 0.32),
+    inset 0 0 0 1px rgba(255,255,255,0.1);
+}
+
+/* Shutter — bigger, outlined */
+.shutter {
+  width: 76px;
+  height: 76px;
+  border-radius: 999px;
+  background: #fff;
+  border: 5px solid rgba(255,255,255,0.9);
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.3);
+  cursor: pointer;
+  position: relative;
+  transition: transform 120ms var(--ease-standard);
+}
+.shutter:active { transform: scale(0.94); }
+.shutter.recording::after {
+  content: '';
+  position: absolute;
+  inset: 18px;
+  background: #E0373A;
+  border-radius: 8px;
+}
+
+/* Thin hairline rule on the page (above the timestamp) */
+.hairline {
+  height: 1px;
+  background: currentColor;
+  opacity: 0.12;
+  border: 0;
+}
+
+/* Header icon chip — blends with the cream page in light,
+   inverts to warm-charcoal in dark. */
+.icon-chip {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: rgba(250, 247, 240, 0.72);
+  border: 1px solid rgba(140, 110, 60, 0.14);
+  color: var(--fg-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.theme-dark .icon-chip {
+  background: rgba(50, 44, 38, 0.7);
+  border: 1px solid rgba(240, 225, 190, 0.10);
+  color: var(--fg-1);
+}
+.caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: currentColor;
+  vertical-align: -0.15em;
+  margin-left: 1px;
+  opacity: 0.6;
+  animation: blink 1.1s steps(2, start) infinite;
+}
+@keyframes blink { to { visibility: hidden; } }

@@ -1,0 +1,338 @@
+/* ============================================================
+   StoveTop Design System — colors_and_type.css
+   Light theme: Anthropic / Claude website warm cream palette
+   Dark theme:  Claude iOS app deep near-black with warm accents
+   ============================================================ */
+
+/* ---------- Fonts ----------
+   Source fonts used on claude.ai / anthropic.com are:
+     - Copernicus (serif display) — proprietary (Anthropic)
+     - Styrene B (sans) — Commercial Type, licensed
+     - Tiempos Text (serif body) — Klim Type Foundry, licensed
+     - GT America (mobile) — GrillitypeMono
+
+   These are not redistributable, so we substitute with
+   close Google Fonts equivalents. The substitution table:
+
+     Copernicus       → Fraunces (opsz 144, similar wedge serifs)
+     Styrene B        → Inter (neutral grotesque; not a dead ringer
+                         but reads clean + modern at all sizes)
+     Tiempos Text     → Source Serif 4 (warm, readable, similar x-height)
+     Mono             → JetBrains Mono
+
+   NOTE TO USER: if you have licensed copies of the originals,
+   drop the .woff2 files into fonts/ and swap these @font-face
+   declarations. The rest of the token system will Just Work.
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* ===== Typography families ===== */
+  --font-serif-display: "Fraunces", "Copernicus", ui-serif, Georgia, serif;
+  --font-serif-body: "Source Serif 4", "Tiempos Text", ui-serif, Georgia, serif;
+  --font-sans: "Inter", "Styrene B", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+
+  /* ===== Type scale — sizes ===== */
+  --fs-display-xl: 80px;
+  --fs-display-lg: 64px;
+  --fs-display-md: 48px;
+  --fs-display-sm: 36px;
+  --fs-h1: 32px;
+  --fs-h2: 24px;
+  --fs-h3: 20px;
+  --fs-h4: 18px;
+  --fs-body-lg: 18px;
+  --fs-body: 16px;
+  --fs-body-sm: 14px;
+  --fs-caption: 13px;
+  --fs-mono: 13.5px;
+
+  /* ===== Type scale — line heights ===== */
+  --lh-tight: 1.05;
+  --lh-snug: 1.2;
+  --lh-normal: 1.45;
+  --lh-relaxed: 1.6;
+
+  /* ===== Type scale — letter spacing ===== */
+  --tracking-tight: -0.02em;
+  --tracking-snug: -0.01em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.04em;
+  --tracking-caps: 0.08em;
+
+  /* ===== Type weights ===== */
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* ===== Spacing scale (4px base) ===== */
+  --space-0: 0px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+  --space-10: 64px;
+  --space-11: 80px;
+  --space-12: 96px;
+
+  /* ===== Radii ===== */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-full: 999px;
+
+  /* ===== Motion ===== */
+  --ease-standard: cubic-bezier(0.2, 0.0, 0.0, 1.0);
+  --ease-emphasized: cubic-bezier(0.3, 0.0, 0.1, 1.0);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 280ms;
+}
+
+/* ============================================================
+   LIGHT THEME — Claude website / Anthropic warm cream
+   Observed palette from claude.ai marketing surfaces:
+     - Bg:        #FAF9F5 (warm ivory / cream)
+     - Surface:   #FFFFFF or #F5F4EE
+     - Text:      #191919 / #141413 (near-black, warm)
+     - Accent:    #D97757 (Claude's signature terracotta orange)
+     - Accent 2:  #CC785C (darker terracotta)
+     - Border:    #E8E5DA / #D8D4C8 (warm taupe rules)
+   ============================================================ */
+:root,
+.theme-light {
+  color-scheme: light;
+
+  /* Surfaces — the "cream page" lineage */
+  --bg: #FAF9F5;           /* app background, warm ivory */
+  --bg-alt: #F5F4EE;       /* slightly deeper cream for cards/sections */
+  --surface: #FFFFFF;      /* pop-up white surfaces, modals, inputs */
+  --surface-raised: #FFFFFF;
+  --surface-sunken: #F0EEE6;
+
+  /* Foreground — warm near-blacks, not pure #000 */
+  --fg-1: #141413;         /* primary text — headlines, body */
+  --fg-2: #3D3D3A;         /* secondary text — subheads, metadata */
+  --fg-3: #6B6A63;         /* tertiary text — captions, hints */
+  --fg-4: #9A978C;         /* quaternary — disabled, placeholders */
+  --fg-on-accent: #FFFFFF; /* text on orange */
+
+  /* Borders */
+  --border-1: #E8E5DA;     /* hairlines and card edges */
+  --border-2: #D8D4C8;     /* stronger rules */
+  --border-focus: #D97757; /* focus ring */
+
+  /* Brand / accent — the terracotta orange */
+  --accent: #D97757;
+  --accent-hover: #CC6B4A;
+  --accent-press: #B85A3D;
+  --accent-soft: #F5E6DF;    /* tinted bg for accent pills / hovers */
+  --accent-softer: #FBF1EC;  /* even lighter tint */
+
+  /* Semantic colors — warm-leaning to match the cream */
+  --success: #5A8A62;
+  --success-soft: #E8EFE4;
+  --warning: #C58B2E;
+  --warning-soft: #F6EAD3;
+  --danger: #BF4040;
+  --danger-soft: #F5E0DC;
+  --info: #4A6F8F;
+  --info-soft: #DDE8EF;
+
+  /* Shadows — soft, warm, low-spread. Claude's surfaces are almost flat. */
+  --shadow-xs: 0 1px 2px rgba(40, 34, 24, 0.04);
+  --shadow-sm: 0 1px 3px rgba(40, 34, 24, 0.06), 0 1px 2px rgba(40, 34, 24, 0.04);
+  --shadow-md: 0 4px 12px rgba(40, 34, 24, 0.07), 0 1px 3px rgba(40, 34, 24, 0.05);
+  --shadow-lg: 0 12px 28px rgba(40, 34, 24, 0.10), 0 2px 6px rgba(40, 34, 24, 0.05);
+  --shadow-xl: 0 24px 48px rgba(40, 34, 24, 0.14), 0 4px 10px rgba(40, 34, 24, 0.06);
+
+  /* Focus ring */
+  --ring: 0 0 0 3px rgba(217, 119, 87, 0.28);
+
+  /* Scrim / overlay */
+  --scrim: rgba(20, 20, 19, 0.44);
+}
+
+/* ============================================================
+   DARK THEME — Claude iOS mobile app
+   Deep near-black with warm orange accents.
+   Observed palette:
+     - Bg:       #1F1E1D (warm very-dark charcoal, not pure black)
+     - Surface:  #2A2928 / #30302E
+     - Text:     #F0EEE6 (warm off-white — SAME cream as light bg)
+     - Accent:   #D97757 (same terracotta — brand constant)
+     - Border:   #3A3937
+   ============================================================ */
+.theme-dark {
+  color-scheme: dark;
+
+  --bg: #1F1E1D;
+  --bg-alt: #26251F;
+  --surface: #2A2928;
+  --surface-raised: #30302E;
+  --surface-sunken: #161615;
+
+  --fg-1: #F0EEE6;
+  --fg-2: #C9C6BC;
+  --fg-3: #8F8D84;
+  --fg-4: #5E5C56;
+  --fg-on-accent: #1F1E1D;
+
+  --border-1: #3A3937;
+  --border-2: #4A4845;
+  --border-focus: #E08A6C;
+
+  --accent: #E08A6C;        /* slightly brighter in dark for contrast */
+  --accent-hover: #E89B7E;
+  --accent-press: #D97757;
+  --accent-soft: #3A2E27;
+  --accent-softer: #2E2722;
+
+  --success: #7EB085;
+  --success-soft: #2A3A2D;
+  --warning: #D9A65E;
+  --warning-soft: #3A3020;
+  --danger: #E07070;
+  --danger-soft: #3A2626;
+  --info: #7FA5C2;
+  --info-soft: #243039;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.32);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.40), 0 1px 2px rgba(0, 0, 0, 0.28);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.50), 0 1px 3px rgba(0, 0, 0, 0.32);
+  --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.60), 0 2px 6px rgba(0, 0, 0, 0.36);
+  --shadow-xl: 0 24px 48px rgba(0, 0, 0, 0.70), 0 4px 10px rgba(0, 0, 0, 0.42);
+
+  --ring: 0 0 0 3px rgba(224, 138, 108, 0.35);
+  --scrim: rgba(0, 0, 0, 0.60);
+}
+
+/* ============================================================
+   Semantic typography classes — bind scale → elements
+   ============================================================ */
+
+/* Display — serif, for hero moments and big editorial headlines */
+.display-xl,
+.display-lg,
+.display-md,
+.display-sm {
+  font-family: var(--font-serif-display);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--fg-1);
+  font-optical-sizing: auto;
+}
+.display-xl { font-size: var(--fs-display-xl); }
+.display-lg { font-size: var(--fs-display-lg); }
+.display-md { font-size: var(--fs-display-md); }
+.display-sm { font-size: var(--fs-display-sm); }
+
+/* Headings — serif for h1/h2, sans for h3/h4 (matches Claude's mix) */
+.h1 {
+  font-family: var(--font-serif-display);
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-snug);
+  letter-spacing: var(--tracking-tight);
+  color: var(--fg-1);
+}
+.h2 {
+  font-family: var(--font-serif-display);
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-snug);
+  letter-spacing: var(--tracking-snug);
+  color: var(--fg-1);
+}
+.h3 {
+  font-family: var(--font-sans);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+  letter-spacing: var(--tracking-snug);
+  color: var(--fg-1);
+}
+.h4 {
+  font-family: var(--font-sans);
+  font-size: var(--fs-h4);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-normal);
+  color: var(--fg-1);
+}
+
+/* Body */
+.body-lg {
+  font-family: var(--font-sans);
+  font-size: var(--fs-body-lg);
+  line-height: var(--lh-relaxed);
+  color: var(--fg-1);
+}
+.body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: var(--lh-relaxed);
+  color: var(--fg-1);
+}
+.body-sm {
+  font-family: var(--font-sans);
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-normal);
+  color: var(--fg-2);
+}
+.caption {
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  line-height: var(--lh-normal);
+  color: var(--fg-3);
+}
+.overline {
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+
+/* Serif body — for editorial long-form passages (marketing pages) */
+.prose {
+  font-family: var(--font-serif-body);
+  font-size: var(--fs-body-lg);
+  line-height: var(--lh-relaxed);
+  color: var(--fg-1);
+  font-optical-sizing: auto;
+}
+
+/* Code / mono */
+.code,
+code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  color: var(--fg-1);
+  background: var(--surface-sunken);
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+}
+
+/* Base element defaults */
+html, body { background: var(--bg); color: var(--fg-1); }
+body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: var(--lh-relaxed);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}

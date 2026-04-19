@@ -1,0 +1,477 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>SpotJournal — App Icons</title>
+<link rel="stylesheet" href="styles/colors_and_type.css"/>
+<link rel="stylesheet" href="styles/components.css"/>
+<link rel="stylesheet" href="styles/journal.css"/>
+<style>
+  html, body { margin: 0; padding: 0; background: var(--bg-alt); min-height: 100vh; }
+  .page {
+    padding: 56px 48px 80px;
+    max-width: 1280px; margin: 0 auto;
+    font-family: var(--font-sans);
+    color: var(--fg-1);
+  }
+  .title { font-family: var(--font-serif-display); font-size: 44px; line-height: 1.05; letter-spacing: -0.02em; font-weight: 500; margin: 0 0 8px; }
+  .subtitle { color: var(--fg-3); font-size: 16px; margin: 0 0 48px; max-width: 620px; }
+  .section-title {
+    font-family: var(--font-serif-display);
+    font-size: 22px; font-weight: 500; letter-spacing: -0.01em;
+    margin: 48px 0 4px;
+  }
+  .section-sub { color: var(--fg-3); font-size: 13px; margin: 0 0 20px; }
+
+  .row { display: flex; align-items: flex-end; gap: 32px; flex-wrap: wrap; }
+
+  /* Icon frame — iOS superellipse mask. iOS doesn't use a plain rounded rect;
+     the shape is a squircle. radius ≈ 22.37% of side. */
+  .ios-icon {
+    position: relative;
+    overflow: hidden;
+    background: #F5EEDC;
+    /* squircle approximation via border-radius — fine at display sizes */
+    border-radius: 22.37%;
+    box-shadow:
+      0 2px 4px rgba(40,30,18,0.06),
+      0 10px 32px rgba(40,30,18,0.12);
+    isolation: isolate;
+  }
+
+  .size-label {
+    margin-top: 10px;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    color: var(--fg-3);
+    text-align: center;
+    letter-spacing: 0.04em;
+  }
+  .size-label b { color: var(--fg-1); font-weight: 600; }
+  .stack { display: flex; flex-direction: column; align-items: center; }
+
+  .variant-row {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+    max-width: 900px;
+  }
+  .variant-card {
+    background: var(--surface);
+    border: 1px solid var(--border-1);
+    border-radius: 16px;
+    padding: 28px;
+    display: flex; flex-direction: column; align-items: center; gap: 18px;
+  }
+  .variant-card .kicker {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--fg-3); font-weight: 500;
+  }
+  .variant-card .name {
+    font-family: var(--font-serif-display); font-size: 18px;
+    color: var(--fg-1); letter-spacing: -0.01em; font-weight: 500;
+  }
+  .variant-card .desc { color: var(--fg-3); font-size: 12.5px; text-align: center; line-height: 1.5; max-width: 220px; }
+
+  /* Home screen mock */
+  .home-mock {
+    width: 390px; height: 844px; border-radius: 52px;
+    background:
+      radial-gradient(circle at 20% 18%, rgba(217, 119, 87, 0.35), transparent 40%),
+      radial-gradient(circle at 80% 90%, rgba(58, 42, 30, 0.6), transparent 50%),
+      linear-gradient(160deg, #7A5A3E 0%, #3A2A1E 100%);
+    position: relative; overflow: hidden;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.1);
+    padding: 54px 28px 40px;
+    box-sizing: border-box;
+    display: flex; flex-direction: column; gap: 20px;
+  }
+  .home-mock-dark {
+    background:
+      radial-gradient(circle at 30% 10%, rgba(100, 80, 60, 0.4), transparent 45%),
+      radial-gradient(circle at 85% 95%, rgba(20, 15, 10, 0.9), transparent 55%),
+      linear-gradient(160deg, #2A1E16 0%, #0F0A06 100%);
+  }
+  .home-mock .status {
+    display: flex; justify-content: space-between; align-items: center;
+    color: #fff; padding: 4px 14px 0; font-weight: 600; font-size: 15px;
+    font-family: -apple-system, system-ui;
+  }
+  .home-mock .grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px 18px;
+    margin-top: 14px;
+  }
+  .home-mock .app {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .home-mock .app-tile {
+    width: 62px; height: 62px; border-radius: 14px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  }
+  .home-mock .app-label {
+    font-family: -apple-system, system-ui; font-size: 11px;
+    color: #fff; letter-spacing: 0.2px;
+  }
+  .home-mock .dock {
+    position: absolute; bottom: 20px; left: 16px; right: 16px;
+    background: rgba(255,255,255,0.25); backdrop-filter: blur(24px);
+    border-radius: 30px; padding: 12px;
+    display: flex; justify-content: space-around; align-items: center;
+  }
+  .home-mock .dock .app-tile { box-shadow: 0 2px 10px rgba(0,0,0,0.25); }
+
+  .specs {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px; max-width: 900px;
+  }
+  .spec {
+    background: var(--surface); border: 1px solid var(--border-1);
+    border-radius: 12px; padding: 14px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .spec-label { font-size: 13px; color: var(--fg-2); font-weight: 500; }
+  .spec-val { font-family: var(--font-mono); font-size: 12.5px; color: var(--fg-1); }
+</style>
+</head>
+<body class="theme-light">
+
+<div class="page">
+  <h1 class="title">SpotJournal — App icons</h1>
+  <p class="subtitle">A pasted photo on cream paper, tiny enough to live on the Home Screen. The tape and slight tilt carry the brand down to 60×60.</p>
+
+  <!-- ────────────────────────────── -->
+  <div class="section-title">Hero</div>
+  <div class="section-sub">1024×1024 — the master artwork submitted to App Store Connect.</div>
+  <div class="stack" style="align-items: flex-start;">
+    <div class="ios-icon" id="hero-icon" style="width: 320px; height: 320px;">
+      <!-- content injected by JS -->
+    </div>
+    <div class="size-label" style="margin-left: 4px; text-align: left;"><b>1024 px</b> · App Store master</div>
+  </div>
+
+  <!-- ────────────────────────────── -->
+  <div class="section-title">Size scaling</div>
+  <div class="section-sub">The taped photo holds legibility down to Settings-row size (58 px). No type on the icon, so no sub-40 breakdown.</div>
+  <div class="row" id="size-row"></div>
+
+  <!-- ────────────────────────────── -->
+  <div class="section-title">Variants</div>
+  <div class="section-sub">iOS 18+ shows three icons: default, dark, and a tinted/mono version the user can colorize.</div>
+  <div class="variant-row" id="variant-row"></div>
+
+  <!-- ────────────────────────────── -->
+  <div class="section-title">On the Home Screen</div>
+  <div class="section-sub">Dropped among real apps so you can judge whether it holds its own.</div>
+  <div class="row" style="align-items: flex-start; gap: 48px;">
+    <div class="stack">
+      <div class="home-mock" id="home-light"></div>
+      <div class="size-label"><b>Light wallpaper</b> · default icon</div>
+    </div>
+    <div class="stack">
+      <div class="home-mock home-mock-dark" id="home-dark"></div>
+      <div class="size-label"><b>Dark wallpaper</b> · dark icon</div>
+    </div>
+  </div>
+
+  <!-- ────────────────────────────── -->
+  <div class="section-title">Specs</div>
+  <div class="section-sub">What to hand the iOS engineer.</div>
+  <div class="specs">
+    <div class="spec"><span class="spec-label">Canvas</span><span class="spec-val">1024 × 1024 px</span></div>
+    <div class="spec"><span class="spec-label">Mask</span><span class="spec-val">iOS squircle (system)</span></div>
+    <div class="spec"><span class="spec-label">Bleed</span><span class="spec-val">edge-to-edge</span></div>
+    <div class="spec"><span class="spec-label">Base cream</span><span class="spec-val">#F5EEDC → #E8DCC2</span></div>
+    <div class="spec"><span class="spec-label">Accent</span><span class="spec-val">#D97757</span></div>
+    <div class="spec"><span class="spec-label">Tape</span><span class="spec-val">#E8D2A0 @ 72% α</span></div>
+    <div class="spec"><span class="spec-label">Photo rotation</span><span class="spec-val">−3.5°</span></div>
+    <div class="spec"><span class="spec-label">Format</span><span class="spec-val">PNG, no alpha</span></div>
+  </div>
+</div>
+
+<!-- ────────── Icon SVGs ────────── -->
+<!-- All icons share one SVG. Scaled via viewBox in a wrapper. -->
+<template id="icon-default">
+<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%;">
+  <!-- Paper gradient background -->
+  <defs>
+    <linearGradient id="paperBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F8F1DF"/>
+      <stop offset="100%" stop-color="#E6D6B4"/>
+    </linearGradient>
+    <!-- Subtle paper fiber noise -->
+    <filter id="paperNoise" x="0" y="0" width="1" height="1">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" stitchTiles="stitch"/>
+      <feColorMatrix values="0 0 0 0 0.40  0 0 0 0 0.30  0 0 0 0 0.20  0 0 0 0.07 0"/>
+    </filter>
+    <!-- Warm sky inside the photo -->
+    <linearGradient id="photoSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F3C884"/>
+      <stop offset="50%" stop-color="#E08458"/>
+      <stop offset="100%" stop-color="#A34A2E"/>
+    </linearGradient>
+    <!-- Tape gradient -->
+    <linearGradient id="tapeGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.3)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0.05)"/>
+    </linearGradient>
+    <!-- Photo drop shadow -->
+    <filter id="photoShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="14"/>
+      <feOffset dx="0" dy="10"/>
+      <feColorMatrix values="0 0 0 0 0.26  0 0 0 0 0.17  0 0 0 0 0.08  0 0 0 0.26 0"/>
+      <feComposite in2="SourceGraphic" operator="arithmetic" k2="1" k3="1"/>
+    </filter>
+  </defs>
+
+  <!-- Paper -->
+  <rect width="1024" height="1024" fill="url(#paperBg)"/>
+  <!-- Paper noise (very subtle) -->
+  <rect width="1024" height="1024" filter="url(#paperNoise)" opacity="0.6"/>
+
+  <!-- Pasted photo, rotated -->
+  <g transform="rotate(-3.5, 512, 512)">
+    <!-- Shadow -->
+    <rect x="240" y="205" width="544" height="624" fill="#5a3d20" opacity="0.22" filter="blur(18px)"/>
+    <!-- Photo border (cream edge) -->
+    <rect x="230" y="195" width="564" height="644" fill="#FFF8E8"/>
+    <!-- Photo content -->
+    <g>
+      <!-- sky -->
+      <rect x="250" y="215" width="524" height="604" fill="url(#photoSky)"/>
+      <!-- sun -->
+      <circle cx="660" cy="430" r="88" fill="#FFE4A8" opacity="0.95"/>
+      <circle cx="660" cy="430" r="130" fill="#FFE4A8" opacity="0.22"/>
+      <!-- distant hills -->
+      <path d="M250 640 L360 580 L450 620 L560 570 L660 620 L760 585 L774 600 L774 819 L250 819 Z" fill="#6B3B24" opacity="0.82"/>
+      <!-- foreground silhouette -->
+      <path d="M250 720 L340 695 L420 715 L520 680 L620 710 L720 690 L774 705 L774 819 L250 819 Z" fill="#2F1B12"/>
+      <!-- film grain inset -->
+      <rect x="250" y="215" width="524" height="604" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="3"/>
+    </g>
+
+    <!-- Tape strips at top corners -->
+    <g>
+      <!-- left tape -->
+      <g transform="rotate(-10, 330, 200)">
+        <rect x="260" y="184" width="160" height="42" fill="#E8D2A0" opacity="0.82"/>
+        <rect x="260" y="184" width="160" height="42" fill="url(#tapeGrad)"/>
+        <rect x="260" y="184" width="160" height="42" fill="none" stroke="#A58450" stroke-width="1" opacity="0.35"/>
+      </g>
+      <!-- right tape -->
+      <g transform="rotate(8, 694, 200)">
+        <rect x="604" y="184" width="160" height="42" fill="#E8D2A0" opacity="0.82"/>
+        <rect x="604" y="184" width="160" height="42" fill="url(#tapeGrad)"/>
+        <rect x="604" y="184" width="160" height="42" fill="none" stroke="#A58450" stroke-width="1" opacity="0.35"/>
+      </g>
+    </g>
+  </g>
+</svg>
+</template>
+
+<template id="icon-dark">
+<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%;">
+  <defs>
+    <linearGradient id="paperBgDark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2B2520"/>
+      <stop offset="100%" stop-color="#15110D"/>
+    </linearGradient>
+    <linearGradient id="photoSkyDark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E3A268"/>
+      <stop offset="50%" stop-color="#B35A3A"/>
+      <stop offset="100%" stop-color="#5A2818"/>
+    </linearGradient>
+    <linearGradient id="tapeGradDark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.16)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0.03)"/>
+    </linearGradient>
+    <filter id="paperNoiseDark" x="0" y="0" width="1" height="1">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" stitchTiles="stitch"/>
+      <feColorMatrix values="0 0 0 0 0.95  0 0 0 0 0.88  0 0 0 0 0.76  0 0 0 0.06 0"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#paperBgDark)"/>
+  <rect width="1024" height="1024" filter="url(#paperNoiseDark)" opacity="0.5"/>
+
+  <g transform="rotate(-3.5, 512, 512)">
+    <rect x="240" y="205" width="544" height="624" fill="#000" opacity="0.6" filter="blur(20px)"/>
+    <rect x="230" y="195" width="564" height="644" fill="#2F2822"/>
+    <g>
+      <rect x="250" y="215" width="524" height="604" fill="url(#photoSkyDark)"/>
+      <circle cx="660" cy="430" r="88" fill="#FFCE86" opacity="0.9"/>
+      <circle cx="660" cy="430" r="130" fill="#FFCE86" opacity="0.18"/>
+      <path d="M250 640 L360 580 L450 620 L560 570 L660 620 L760 585 L774 600 L774 819 L250 819 Z" fill="#3A1D12" opacity="0.9"/>
+      <path d="M250 720 L340 695 L420 715 L520 680 L620 710 L720 690 L774 705 L774 819 L250 819 Z" fill="#140906"/>
+      <rect x="250" y="215" width="524" height="604" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3"/>
+    </g>
+    <g>
+      <g transform="rotate(-10, 330, 200)">
+        <rect x="260" y="184" width="160" height="42" fill="#B89555" opacity="0.65"/>
+        <rect x="260" y="184" width="160" height="42" fill="url(#tapeGradDark)"/>
+      </g>
+      <g transform="rotate(8, 694, 200)">
+        <rect x="604" y="184" width="160" height="42" fill="#B89555" opacity="0.65"/>
+        <rect x="604" y="184" width="160" height="42" fill="url(#tapeGradDark)"/>
+      </g>
+    </g>
+  </g>
+</svg>
+</template>
+
+<template id="icon-tinted">
+<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%;">
+  <!-- Tinted variant: iOS applies user's tint. We supply a monochrome
+       luminance mask ranging from pure black (transparent) to white. -->
+  <defs>
+    <linearGradient id="bgT" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2A2A2A"/>
+      <stop offset="100%" stop-color="#101010"/>
+    </linearGradient>
+    <linearGradient id="photoT" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E6E6E6"/>
+      <stop offset="100%" stop-color="#6A6A6A"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bgT)"/>
+
+  <g transform="rotate(-3.5, 512, 512)">
+    <rect x="240" y="205" width="544" height="624" fill="#000" opacity="0.5" filter="blur(20px)"/>
+    <rect x="230" y="195" width="564" height="644" fill="#D8D8D8"/>
+    <rect x="250" y="215" width="524" height="604" fill="url(#photoT)"/>
+    <circle cx="660" cy="430" r="90" fill="#FFF" opacity="0.85"/>
+    <circle cx="660" cy="430" r="132" fill="#FFF" opacity="0.18"/>
+    <path d="M250 640 L360 580 L450 620 L560 570 L660 620 L760 585 L774 600 L774 819 L250 819 Z" fill="#4A4A4A"/>
+    <path d="M250 720 L340 695 L420 715 L520 680 L620 710 L720 690 L774 705 L774 819 L250 819 Z" fill="#1E1E1E"/>
+    <g>
+      <g transform="rotate(-10, 330, 200)">
+        <rect x="260" y="184" width="160" height="42" fill="#A4A4A4" opacity="0.7"/>
+      </g>
+      <g transform="rotate(8, 694, 200)">
+        <rect x="604" y="184" width="160" height="42" fill="#A4A4A4" opacity="0.7"/>
+      </g>
+    </g>
+  </g>
+</svg>
+</template>
+
+<script>
+  function iconEl(kind, size) {
+    const tpl = document.getElementById('icon-' + kind);
+    const wrap = document.createElement('div');
+    wrap.className = 'ios-icon';
+    if (kind === 'dark') wrap.style.background = '#1F1E1D';
+    if (kind === 'tinted') wrap.style.background = '#181818';
+    wrap.style.width = size + 'px';
+    wrap.style.height = size + 'px';
+    wrap.appendChild(tpl.content.cloneNode(true));
+    return wrap;
+  }
+
+  // Hero
+  document.getElementById('hero-icon').appendChild(
+    document.getElementById('icon-default').content.cloneNode(true)
+  );
+
+  // Size row
+  const sizes = [
+    { px: 180, label: 'iPhone · Home Screen', spec: '60pt @3x' },
+    { px: 120, label: 'iPhone · Spotlight', spec: '40pt @3x' },
+    { px: 87,  label: 'Settings', spec: '29pt @3x' },
+    { px: 60,  label: 'Notifications', spec: '20pt @3x' },
+    { px: 40,  label: 'Smallest badge', spec: '40pt @1x' },
+  ];
+  const sizeRow = document.getElementById('size-row');
+  sizes.forEach(s => {
+    const stack = document.createElement('div');
+    stack.className = 'stack';
+    stack.appendChild(iconEl('default', s.px));
+    const lbl = document.createElement('div');
+    lbl.className = 'size-label';
+    lbl.innerHTML = '<b>' + s.px + ' px</b><br/>' + s.label + '<br/><span style="color:var(--fg-4); font-size:11px;">' + s.spec + '</span>';
+    stack.appendChild(lbl);
+    sizeRow.appendChild(stack);
+  });
+
+  // Variants
+  const variants = [
+    { kind: 'default', name: 'Default', kicker: 'Light mode', desc: 'Cream paper, warm terracotta photo, washi tape at the corners.' },
+    { kind: 'dark',    name: 'Dark',    kicker: 'Dark mode', desc: 'Deep charcoal paper, dimmer photo. Shows beside dark wallpapers.' },
+    { kind: 'tinted',  name: 'Tinted',  kicker: 'iOS 18+',   desc: 'Monochrome luminance map. iOS applies the user\'s tint color on top.' },
+  ];
+  const vr = document.getElementById('variant-row');
+  variants.forEach(v => {
+    const card = document.createElement('div');
+    card.className = 'variant-card';
+    card.innerHTML = `<div class="kicker">${v.kicker}</div>`;
+    card.appendChild(iconEl(v.kind, 160));
+    card.insertAdjacentHTML('beforeend', `<div class="name">${v.name}</div><div class="desc">${v.desc}</div>`);
+    vr.appendChild(card);
+  });
+
+  // Home screen mock — a few apps around SpotJournal
+  function buildHome(id, variant) {
+    const home = document.getElementById(id);
+    home.innerHTML = `
+      <div class="status"><span>9:41</span><span>●●●</span></div>
+      <div class="grid" id="grid-${id}"></div>
+      <div class="dock" id="dock-${id}"></div>
+    `;
+    const gridApps = [
+      { tile: '#000', fg: '#fff', label: 'Clock', draw: (t) => { t.style.background='#000'; t.innerHTML = '<svg viewBox="0 0 62 62" style="display:block"><circle cx="31" cy="31" r="26" fill="#000" stroke="#fff" stroke-width="3"/><line x1="31" y1="31" x2="31" y2="12" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/><line x1="31" y1="31" x2="46" y2="31" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg>'; } },
+      { label: 'Weather', draw: (t) => { t.style.background = 'linear-gradient(180deg, #4A90E2, #2E5FA4)'; t.innerHTML = '<svg viewBox="0 0 62 62"><circle cx="40" cy="22" r="10" fill="#FFDA6B"/><path d="M15 40 Q12 32 20 30 Q22 22 32 24 Q42 20 46 30 Q56 32 50 42 Z" fill="#fff"/></svg>'; }},
+      { label: 'Maps', draw: (t) => { t.style.background = '#E8EDE0'; t.innerHTML = '<svg viewBox="0 0 62 62"><path d="M5 20 L22 15 L42 22 L57 17 L57 52 L42 57 L22 50 L5 55 Z" fill="#C7D4B8"/><path d="M18 15 Q32 25 25 40 Q40 50 50 40" stroke="#7A9070" stroke-width="2.5" fill="none"/><circle cx="38" cy="28" r="5" fill="#D97757"/></svg>'; }},
+      { spot: true },
+      { label: 'Notes', draw: (t) => { t.style.background = '#FFE889'; t.innerHTML = '<svg viewBox="0 0 62 62"><line x1="14" y1="20" x2="48" y2="20" stroke="#B38A1E" stroke-width="2"/><line x1="14" y1="30" x2="48" y2="30" stroke="#B38A1E" stroke-width="2"/><line x1="14" y1="40" x2="40" y2="40" stroke="#B38A1E" stroke-width="2"/></svg>'; }},
+      { label: 'Photos', draw: (t) => { t.style.background = '#fff'; t.innerHTML = '<svg viewBox="0 0 62 62"><circle cx="31" cy="31" r="13" fill="none" stroke="#D97757" stroke-width="3"/><circle cx="31" cy="13" r="5" fill="#F4B400"/><circle cx="49" cy="31" r="5" fill="#4A90E2"/><circle cx="31" cy="49" r="5" fill="#0F9D58"/><circle cx="13" cy="31" r="5" fill="#D97757"/></svg>'; }},
+      { label: 'Music', draw: (t) => { t.style.background = 'linear-gradient(180deg, #FA233B, #F94E78)'; t.innerHTML = '<svg viewBox="0 0 62 62"><path d="M22 20 L42 16 L42 40" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="22" cy="42" r="5" fill="#fff"/><circle cx="42" cy="40" r="5" fill="#fff"/></svg>'; }},
+      { label: 'Calendar', draw: (t) => { t.style.background = '#fff'; t.innerHTML = '<svg viewBox="0 0 62 62"><text x="31" y="22" text-anchor="middle" fill="#E0373A" font-size="9" font-weight="600" font-family="system-ui">APR</text><text x="31" y="48" text-anchor="middle" fill="#222" font-size="26" font-weight="300" font-family="system-ui">18</text></svg>'; }},
+    ];
+    const grid = document.getElementById('grid-' + id);
+    gridApps.forEach(a => {
+      const app = document.createElement('div');
+      app.className = 'app';
+      if (a.spot) {
+        const tile = iconEl(variant, 62);
+        tile.className = 'ios-icon app-tile';
+        tile.style.width = '62px'; tile.style.height = '62px';
+        tile.style.borderRadius = '14px';
+        app.appendChild(tile);
+        const lbl = document.createElement('div');
+        lbl.className = 'app-label'; lbl.textContent = 'SpotJournal';
+        lbl.style.fontWeight = '600';
+        app.appendChild(lbl);
+      } else {
+        const tile = document.createElement('div');
+        tile.className = 'app-tile';
+        a.draw(tile);
+        app.appendChild(tile);
+        const lbl = document.createElement('div');
+        lbl.className = 'app-label'; lbl.textContent = a.label;
+        app.appendChild(lbl);
+      }
+      grid.appendChild(app);
+    });
+
+    const dock = document.getElementById('dock-' + id);
+    const dockApps = [
+      { label: 'Phone', bg: '#0F9D58', svg: '<svg viewBox="0 0 56 56"><path d="M16 16 Q16 36 40 40 L44 34 L36 30 L32 34 Q24 30 22 22 L26 18 L22 12 Z" fill="#fff"/></svg>' },
+      { label: 'Safari', bg: '#fff', svg: '<svg viewBox="0 0 56 56"><circle cx="28" cy="28" r="22" fill="#1E9BE8"/><circle cx="28" cy="28" r="22" fill="none" stroke="#B2B2B2" stroke-width="2"/><polygon points="28,12 34,28 28,44 22,28" fill="#fff"/><polygon points="28,12 28,28 22,28" fill="#E0373A"/></svg>' },
+      { label: 'Messages', bg: '#4FCC55', svg: '<svg viewBox="0 0 56 56"><path d="M12 20 Q12 10 22 10 L36 10 Q46 10 46 20 L46 30 Q46 40 36 40 L24 40 L16 46 L18 38 Q12 36 12 30 Z" fill="#fff"/></svg>' },
+      { label: 'Mail', bg: '#0F7CE0', svg: '<svg viewBox="0 0 56 56"><rect x="10" y="16" width="36" height="26" rx="3" fill="#fff"/><path d="M10 18 L28 32 L46 18" stroke="#0F7CE0" stroke-width="2" fill="none"/></svg>' },
+    ];
+    dockApps.forEach(a => {
+      const app = document.createElement('div');
+      app.className = 'app';
+      app.style.gap = '0';
+      const tile = document.createElement('div');
+      tile.className = 'app-tile';
+      tile.style.background = a.bg;
+      tile.innerHTML = a.svg;
+      app.appendChild(tile);
+      dock.appendChild(app);
+    });
+  }
+  buildHome('home-light', 'default');
+  buildHome('home-dark', 'dark');
+</script>
+</body>
+</html>
