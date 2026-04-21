@@ -8,6 +8,8 @@ struct SettingsSheet: View {
     @State private var isExporting = false
     @State private var exportURL: URL?
     @State private var showingShareSheet = false
+    @State private var isExportingPDF = false
+    @State private var exportProgress: Double = 0
     @State private var showingImport = false
     @State private var importMessage: String?
 
@@ -156,14 +158,9 @@ struct SettingsSheet: View {
                                         Text("Export")
                                             .font(.system(size: 15, weight: .semibold))
                                         Spacer()
-                                        if isExporting {
-                                            ProgressView()
-                                                .controlSize(.small)
-                                        } else {
-                                            Image(systemName: "chevron.right")
-                                                .font(.system(size: 14))
-                                                .foregroundColor(theme.fg3)
-                                        }
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 14))
+                                            .foregroundColor(theme.fg3)
                                     }
                                     .foregroundColor(theme.fg1)
                                     .padding(14)
@@ -177,7 +174,34 @@ struct SettingsSheet: View {
                                     )
                                 }
                                 .buttonStyle(.plain)
-                                .disabled(isExporting)
+                                .disabled(isExporting || isExportingPDF)
+
+                                Button {
+                                    exportPDF()
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "doc.richtext")
+                                            .font(.system(size: 14))
+                                        Text("Export as PDF")
+                                            .font(.system(size: 15, weight: .semibold))
+                                        Spacer()
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 14))
+                                            .foregroundColor(theme.fg3)
+                                    }
+                                    .foregroundColor(theme.fg1)
+                                    .padding(14)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(theme.surface)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 12)
+                                                    .stroke(theme.border2, lineWidth: 1)
+                                            )
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(isExportingPDF || isExporting)
 
                                 Button {
                                     showingImport = true
@@ -205,7 +229,7 @@ struct SettingsSheet: View {
                                 }
                                 .buttonStyle(.plain)
 
-                                Text("Export saves all entries and photos to a single file. Import restores them.")
+                                Text("Export saves entries to a .spotjournal backup. PDF creates a printable version. Import restores from a backup.")
                                     .font(.system(size: 13))
                                     .foregroundColor(theme.fg3)
                             }
@@ -310,24 +334,95 @@ struct SettingsSheet: View {
         } message: {
             Text(importMessage ?? "")
         }
+        .overlay {
+            if isExporting || isExportingPDF {
+                ZStack {
+                    Color.black.opacity(0.4)
+                        .ignoresSafeArea()
+
+                    VStack(spacing: 16) {
+                        Text(isExportingPDF ? "Creating PDF..." : "Exporting...")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(theme.fg1)
+
+                        ProgressView(value: exportProgress)
+                            .tint(theme.accent)
+                            .frame(width: 200)
+
+                        Text("\(Int(exportProgress * 100))%")
+                            .font(.system(size: 13))
+                            .foregroundColor(theme.fg3)
+                            .monospacedDigit()
+                    }
+                    .padding(28)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(theme.surface)
+                            .shadow(color: .black.opacity(0.25), radius: 20, y: 8)
+                    )
+                }
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.2), value: isExporting || isExportingPDF)
+            }
+        }
     }
 
     private func exportJournal() {
         isExporting = true
+        exportProgress = 0
         let entries = state.entries
-        Task {
+        let progress = ProgressBox()
+        let timer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { _ in
+            exportProgress = progress.value
+        }
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result: Result<URL, Error>
             do {
-                let url = try EntryExporter.exportToFile(entries)
-                await MainActor.run {
+                let url = try EntryExporter.exportToFile(entries) { p in
+                    progress.value = p
+                }
+                result = .success(url)
+            } catch {
+                result = .failure(error)
+            }
+            DispatchQueue.main.async {
+                timer.invalidate()
+                switch result {
+                case .success(let url):
                     exportURL = url
                     isExporting = false
                     showingShareSheet = true
-                }
-            } catch {
-                await MainActor.run {
+                case .failure(let error):
                     isExporting = false
                     importMessage = "Export failed: \(error.localizedDescription)"
                 }
+            }
+        }
+    }
+
+    private func exportPDF() {
+        isExportingPDF = true
+        exportProgress = 0
+        let entries = state.entries
+        let journalName = state.name
+        let font = state.captionFont
+        let progress = ProgressBox()
+        let timer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { _ in
+            exportProgress = progress.value
+        }
+        DispatchQueue.global(qos: .userInitiated).async {
+            let url = PDFExporter.exportPDFToFile(
+                entries: entries,
+                journalName: journalName,
+                captionFont: font
+            ) { p in
+                progress.value = p
+            }
+            DispatchQueue.main.async {
+                timer.invalidate()
+                exportURL = url
+                isExportingPDF = false
+                showingShareSheet = true
             }
         }
     }
@@ -414,6 +509,13 @@ struct SettingsSheet: View {
         }
         .buttonStyle(.plain)
     }
+}
+
+// MARK: - Progress Box
+
+/// Thread-safe progress holder for bridging GCD background work to the main thread.
+private final class ProgressBox: @unchecked Sendable {
+    var value: Double = 0
 }
 
 // MARK: - Activity View (Share Sheet)

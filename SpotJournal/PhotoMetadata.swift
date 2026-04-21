@@ -54,18 +54,36 @@ enum PhotoMetadata {
     }
 
     static func readablePlace(from item: MKMapItem) -> String {
-        if let name = item.name, !name.isEmpty {
+        let name = item.name
+        let cityFull = item.addressRepresentations?.cityWithContext(.full)
+        let cityShort = item.addressRepresentations?.cityName
+
+        // POI name + city context → "Prospect Park, Brooklyn, NY"
+        if let name, !name.isEmpty, let city = cityFull ?? cityShort, !city.isEmpty,
+           !name.localizedCaseInsensitiveContains(city) {
+            return "\(name), \(city)"
+        }
+
+        // City with full context (includes state) → "Brooklyn, NY"
+        if let city = cityFull, !city.isEmpty {
+            return city
+        }
+
+        // POI name alone
+        if let name, !name.isEmpty {
             return name
         }
-        if let city = item.addressRepresentations?.cityWithContext(.short) {
+
+        // Bare city name
+        if let city = cityShort, !city.isEmpty {
             return city
         }
-        if let city = item.addressRepresentations?.cityName {
-            return city
-        }
+
+        // Last resort: short address
         if let short = item.address?.shortAddress {
             return short
         }
+
         return ""
     }
 }
