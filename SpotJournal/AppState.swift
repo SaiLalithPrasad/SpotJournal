@@ -127,6 +127,16 @@ class AppState {
         return tag
     }
 
+    func deleteTag(_ tag: Tag) {
+        guard let context = modelContext else { return }
+        // Remove the tag from all entries that reference it
+        for entry in tag.entries {
+            entry.tags.removeAll { $0.id == tag.id }
+        }
+        context.delete(tag)
+        try? context.save()
+    }
+
     func deleteAllEntries() {
         guard let context = modelContext else { return }
         let allEntries = entries

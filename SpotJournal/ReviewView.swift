@@ -347,6 +347,14 @@ struct TagPickerSheet: View {
                                     }
                                 }
                             }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    selectedTags.removeAll { $0.id == tag.id }
+                                    state.deleteTag(tag)
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
                         }
                     }
                 }

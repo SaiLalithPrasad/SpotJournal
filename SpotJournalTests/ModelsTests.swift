@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import SwiftData
 @testable import SpotJournal
 
 struct ModelsTests {
@@ -163,5 +164,56 @@ struct ModelsTests {
         let entries = makeSampleEntries()
         let ids = Set(entries.map(\.id))
         #expect(ids.count == entries.count)
+    }
+
+    // MARK: - AppState.deleteTag
+
+    @MainActor
+    private func makeTestState() throws -> AppState {
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: JournalEntry.self, Tag.self, configurations: config)
+        let state = AppState()
+        state.modelContext = container.mainContext
+        return state
+    }
+
+    @Test @MainActor func deleteTagRemovesFromStore() throws {
+        let state = try makeTestState()
+        let tag = state.createTag(name: "Travel", colorHex: 0xFF0000)
+        #expect(state.allTags.count == 1)
+        state.deleteTag(tag)
+        #expect(state.allTags.count == 0)
+    }
+
+    @Test @MainActor func deleteTagRemovesFromEntries() throws {
+        let state = try makeTestState()
+        let tag = state.createTag(name: "Food", colorHex: 0x00FF00)
+        let entry = JournalEntry(id: "dt-1", photoKey: .coffee,
+                                 caption: "Test", date: Date(), place: "")
+        entry.tags = [tag]
+        state.modelContext?.insert(entry)
+        try state.modelContext?.save()
+
+        #expect(entry.tags.count == 1)
+        state.deleteTag(tag)
+        #expect(entry.tags.count == 0)
+        #expect(state.allTags.count == 0)
+    }
+
+    @Test @MainActor func deleteTagLeavesOtherTagsIntact() throws {
+        let state = try makeTestState()
+        let tag1 = state.createTag(name: "Travel", colorHex: 0xFF0000)
+        let tag2 = state.createTag(name: "Food", colorHex: 0x00FF00)
+        let entry = JournalEntry(id: "dt-2", photoKey: .trail,
+                                 caption: "Test", date: Date(), place: "")
+        entry.tags = [tag1, tag2]
+        state.modelContext?.insert(entry)
+        try state.modelContext?.save()
+
+        state.deleteTag(tag1)
+        #expect(state.allTags.count == 1)
+        #expect(state.allTags.first?.name == "Food")
+        #expect(entry.tags.count == 1)
+        #expect(entry.tags.first?.name == "Food")
     }
 }
