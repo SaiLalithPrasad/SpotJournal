@@ -8,6 +8,10 @@ struct CameraView: View {
     @State private var shutterFlash = false
     @State private var pickerItem: PhotosPickerItem?
     @State private var isLoadingPick = false
+    @State private var focusPoint: CGPoint = .zero
+    @State private var showFocusIndicator = false
+    @State private var focusScale: CGFloat = 1.0
+    @State private var focusHideTask: Task<Void, Never>?
 
     var body: some View {
         ZStack {
@@ -15,8 +19,43 @@ struct CameraView: View {
 
             // Live viewfinder or placeholder fallback
             if cameraService.isAuthorized {
-                CameraPreviewView(session: cameraService.session)
-                    .ignoresSafeArea()
+                CameraPreviewView(
+                    session: cameraService.session,
+                    onTapToFocus: { devicePoint, viewPoint in
+                        cameraService.focus(at: devicePoint)
+                        focusPoint = viewPoint
+                        showFocusIndicator = true
+                        focusScale = 1.4
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            focusScale = 1.0
+                        }
+                        focusHideTask?.cancel()
+                        focusHideTask = Task {
+                            try? await Task.sleep(for: .seconds(1.5))
+                            guard !Task.isCancelled else { return }
+                            withAnimation(.easeOut(duration: 0.3)) {
+                                showFocusIndicator = false
+                            }
+                        }
+                    },
+                    onPinchChanged: { factor in
+                        cameraService.setZoom(factor: factor)
+                    },
+                    pinchAnchorZoom: {
+                        cameraService.currentZoomFactor
+                    }
+                )
+                .ignoresSafeArea()
+                .overlay {
+                    if showFocusIndicator {
+                        RoundedRectangle(cornerRadius: 2)
+                            .stroke(Color.yellow, lineWidth: 1.5)
+                            .frame(width: 70, height: 70)
+                            .scaleEffect(focusScale)
+                            .position(focusPoint)
+                            .allowsHitTesting(false)
+                    }
+                }
             } else {
                 ViewfinderPhoto()
                     .ignoresSafeArea()
@@ -29,11 +68,13 @@ struct CameraView: View {
                 startRadius: 150, endRadius: 400
             )
             .ignoresSafeArea()
+            .allowsHitTesting(false)
 
             // Shutter flash
             if shutterFlash {
                 Color.white.opacity(0.85)
                     .ignoresSafeArea()
+                    .allowsHitTesting(false)
             }
 
             VStack(spacing: 0) {
@@ -92,7 +133,7 @@ struct CameraView: View {
                         HStack(spacing: 4) {
                             ForEach(cameraService.availableZoomPresets, id: \.factor) { preset in
                                 Button {
-                                    cameraService.setZoom(factor: preset.factor)
+                                    cameraService.rampZoom(to: preset.factor)
                                 } label: {
                                     Text(preset.label)
                                         .font(.system(size: 13, weight: .semibold))

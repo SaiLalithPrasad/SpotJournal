@@ -80,22 +80,54 @@ final class CameraService: NSObject {
 
     func setZoom(factor: CGFloat) {
         guard let device = currentDevice else { return }
+        let clamped = clampZoom(factor, for: device)
         sessionQueue.async {
             do {
                 try device.lockForConfiguration()
-                device.videoZoomFactor = max(device.minAvailableVideoZoomFactor,
-                                             min(factor, device.maxAvailableVideoZoomFactor))
+                device.videoZoomFactor = clamped
                 device.unlockForConfiguration()
             } catch {}
-            let wideFactor = self.wideAngleZoomFactor
-            Task { @MainActor in
-                let displayZoom = factor / wideFactor
-                if displayZoom < 1 {
-                    self.currentZoomLabel = String(format: "%.1fx", displayZoom)
-                } else {
-                    self.currentZoomLabel = "\(Int(displayZoom))x"
+        }
+        updateZoomLabel(factor: clamped)
+    }
+
+    /// Smooth animated zoom — used by pinch gesture for native-feel transitions.
+    func rampZoom(to factor: CGFloat, rate: Float = 4.0) {
+        guard let device = currentDevice else { return }
+        let clamped = clampZoom(factor, for: device)
+        sessionQueue.async {
+            do {
+                try device.lockForConfiguration()
+                device.ramp(toVideoZoomFactor: clamped, withRate: rate)
+                device.unlockForConfiguration()
+            } catch {}
+        }
+        updateZoomLabel(factor: clamped)
+    }
+
+    /// Current raw zoom factor for use as pinch gesture anchor.
+    var currentZoomFactor: CGFloat {
+        currentDevice?.videoZoomFactor ?? wideAngleZoomFactor
+    }
+
+    // MARK: - Focus & Exposure
+
+    /// Tap-to-focus at a normalized point (0...1 coordinate space of the preview).
+    func focus(at point: CGPoint) {
+        guard let device = currentDevice else { return }
+        sessionQueue.async {
+            do {
+                try device.lockForConfiguration()
+                if device.isFocusPointOfInterestSupported {
+                    device.focusPointOfInterest = point
+                    device.focusMode = .autoFocus
                 }
-            }
+                if device.isExposurePointOfInterestSupported {
+                    device.exposurePointOfInterest = point
+                    device.exposureMode = .autoExpose
+                }
+                device.unlockForConfiguration()
+            } catch {}
         }
     }
 
@@ -149,6 +181,25 @@ final class CameraService: NSObject {
         }
 
         availableZoomPresets = presets
+    }
+
+    private func clampZoom(_ factor: CGFloat, for device: AVCaptureDevice) -> CGFloat {
+        min(max(factor, device.minAvailableVideoZoomFactor), device.maxAvailableVideoZoomFactor)
+    }
+
+    private func updateZoomLabel(factor: CGFloat) {
+        let display = factor / wideAngleZoomFactor
+        if abs(display - 0.5) < 0.01 {
+            currentZoomLabel = "0.5x"
+        } else if abs(display - 1.0) < 0.01 {
+            currentZoomLabel = "1x"
+        } else if abs(display - 2.0) < 0.01 {
+            currentZoomLabel = "2x"
+        } else if abs(display - 3.0) < 0.01 {
+            currentZoomLabel = "3x"
+        } else {
+            currentZoomLabel = String(format: "%.1fx", display)
+        }
     }
 
     private func configureSession() {
