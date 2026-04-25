@@ -104,6 +104,7 @@ struct SettingsSheet: View {
                                 sectionHeader("APPEARANCE", theme: theme)
 
                                 Button {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                     state.isDark.toggle()
                                 } label: {
                                     HStack {
@@ -306,6 +307,7 @@ struct SettingsSheet: View {
         }
         .alert("Delete All Entries?", isPresented: $showDeleteConfirmation) {
             Button("Delete Everything", role: .destructive) {
+                UINotificationFeedbackGenerator().notificationOccurred(.warning)
                 state.deleteAllEntries()
                 state.settingsOpen = false
             }
@@ -389,6 +391,7 @@ struct SettingsSheet: View {
                 timer.invalidate()
                 switch result {
                 case .success(let url):
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
                     exportURL = url
                     isExporting = false
                     showingShareSheet = true
@@ -420,6 +423,7 @@ struct SettingsSheet: View {
             }
             DispatchQueue.main.async {
                 timer.invalidate()
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
                 exportURL = url
                 isExportingPDF = false
                 showingShareSheet = true
@@ -445,6 +449,7 @@ struct SettingsSheet: View {
 
             do {
                 let count = try EntryExporter.importArchive(data, into: context)
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
                 state.refreshTrigger += 1
                 importMessage = count > 0
                     ? "Imported \(count) entr\(count == 1 ? "y" : "ies")."
@@ -469,6 +474,7 @@ struct SettingsSheet: View {
         let isSelected = state.captionFont == f.id
 
         return Button {
+            UISelectionFeedbackGenerator().selectionChanged()
             state.captionFont = f.id
         } label: {
             HStack(spacing: 12) {

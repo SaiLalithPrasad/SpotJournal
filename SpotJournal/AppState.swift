@@ -100,6 +100,7 @@ class AppState {
         entry.tags = tags
         context.insert(entry)
         try? context.save()
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
 
         screen = .saved
         pendingPhotoData = nil

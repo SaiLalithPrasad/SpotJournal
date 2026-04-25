@@ -193,10 +193,13 @@ struct ZoomablePhotoViewer: View {
     @State private var lastScale: CGFloat = 1
     @State private var offset: CGSize = .zero
     @State private var lastOffset: CGSize = .zero
+    @State private var dismissOffset: CGFloat = 0
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            Color.black
+                .opacity(1.0 - min(abs(dismissOffset) / 300, 0.5))
+                .ignoresSafeArea()
 
             if let uiImage = loadImage() {
                 Image(uiImage: uiImage)
@@ -204,6 +207,7 @@ struct ZoomablePhotoViewer: View {
                     .scaledToFit()
                     .scaleEffect(scale)
                     .offset(offset)
+                    .offset(y: dismissOffset)
                     .gesture(
                         MagnifyGesture()
                             .onChanged { value in
@@ -221,19 +225,32 @@ struct ZoomablePhotoViewer: View {
                                                 width: lastOffset.width + value.translation.width,
                                                 height: lastOffset.height + value.translation.height
                                             )
+                                        } else {
+                                            dismissOffset = value.translation.height
                                         }
                                     }
                                     .onEnded { _ in
-                                        lastOffset = offset
-                                        if scale <= 1 {
-                                            withAnimation(.easeOut(duration: 0.2)) {
-                                                offset = .zero; lastOffset = .zero
+                                        if scale > 1 {
+                                            lastOffset = offset
+                                            if scale <= 1 {
+                                                withAnimation(.easeOut(duration: 0.2)) {
+                                                    offset = .zero; lastOffset = .zero
+                                                }
+                                            }
+                                        } else {
+                                            if abs(dismissOffset) > 100 {
+                                                isPresented = false
+                                            } else {
+                                                withAnimation(.spring(response: 0.3)) {
+                                                    dismissOffset = 0
+                                                }
                                             }
                                         }
                                     }
                             )
                     )
                     .onTapGesture(count: 2) {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         withAnimation(.easeOut(duration: 0.25)) {
                             if scale > 1 {
                                 resetZoom()
@@ -260,6 +277,7 @@ struct ZoomablePhotoViewer: View {
                 }
                 Spacer()
             }
+            .opacity(1.0 - min(abs(dismissOffset) / 200, 0.8))
         }
         .statusBarHidden()
     }

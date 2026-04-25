@@ -228,6 +228,25 @@ struct BrowseView: View {
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
+            // Entry count
+            if !filtered.isEmpty {
+                HStack(spacing: 6) {
+                    Text("\(filtered.count) \(filtered.count == 1 ? "entry" : "entries")")
+                    if !state.name.isEmpty {
+                        Text("|")
+                        Text("\(state.name)'s journal")
+                    }
+                }
+                .font(.system(size: 11, weight: .medium))
+                .tracking(0.5)
+                .textCase(.uppercase)
+                .foregroundColor(theme.fg3)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+            }
+
             // Entry list
             if filtered.isEmpty {
                 VStack {
@@ -358,6 +377,7 @@ struct BrowseView: View {
         }
         context.delete(entry)
         try? context.save()
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 }
 

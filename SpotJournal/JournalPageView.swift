@@ -28,6 +28,31 @@ struct JournalPageView: View {
         }
     }
 
+    @ViewBuilder
+    private func tagChipsView(centered: Bool) -> some View {
+        if !entry.tags.isEmpty {
+            FlowLayout(spacing: 6) {
+                ForEach(entry.tags) { tag in
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(tag.color)
+                            .frame(width: 6, height: 6)
+                        Text(tag.name)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(theme.ink2)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule().fill(tag.color.opacity(0.1))
+                            .overlay(Capsule().stroke(tag.color.opacity(0.2), lineWidth: 0.5))
+                    )
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
+        }
+    }
+
     // MARK: - Classic Layout
 
     private var classicLayout: some View {
@@ -57,7 +82,11 @@ struct JournalPageView: View {
                     alignLeading: false, theme: theme
                 )
                 .padding(.top, 32)
-                .padding(.bottom, 40)
+
+                tagChipsView(centered: true)
+                    .padding(.top, 12)
+
+                Spacer().frame(height: 40)
             }
             .padding(.horizontal, 28)
             .frame(maxWidth: .infinity)
@@ -93,7 +122,11 @@ struct JournalPageView: View {
                     alignLeading: true, theme: theme
                 )
                 .padding(.top, 32)
-                .padding(.bottom, 40)
+
+                tagChipsView(centered: false)
+                    .padding(.top, 12)
+
+                Spacer().frame(height: 40)
             }
             .padding(.horizontal, 28)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -134,7 +167,11 @@ struct JournalPageView: View {
                     alignLeading: true, theme: theme
                 )
                 .padding(.top, 28)
-                .padding(.bottom, 40)
+
+                tagChipsView(centered: false)
+                    .padding(.top, 12)
+
+                Spacer().frame(height: 40)
             }
             .padding(.horizontal, 24)
             .frame(maxWidth: .infinity)

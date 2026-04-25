@@ -4,7 +4,7 @@ A privacy-first photo journal for iOS. Every entry stays on your device — noth
 
 ## Features
 
-- **Camera & Gallery** — Capture photos with the built-in camera (with flash, zoom presets, front/back toggle) or import from your photo library. EXIF metadata (date, GPS) is extracted automatically.
+- **Camera & Gallery** — Capture photos with the built-in camera (with flash, zoom presets, pinch-to-zoom, tap-to-focus, front/back toggle) or import from your photo library. EXIF metadata (date, GPS) is extracted automatically. Zoom transitions use smooth animated ramps for a native camera feel.
 - **Location Tagging** — Entries are tagged with a descriptive place name via reverse geocoding using MapKit (`MKReverseGeocodingRequest`). Displays POI name with city, state, and country context.
 - **Tags** — Create custom colored tags (8 preset colors), assign them to entries, filter by them, and swipe-to-delete tags you no longer need. Deleting a tag cleanly removes it from all associated entries.
 - **Rich Captions** — Write plain text, bullet lists (`- item`), or numbered lists (`1. item`). URLs in captions are automatically detected and tappable. Long captions are scrollable.
@@ -14,9 +14,11 @@ A privacy-first photo journal for iOS. Every entry stays on your device — noth
 - **Export (PDF)** — Generate a printable US Letter PDF with a cover page, one entry per page, photos scaled to fit, formatted captions (prose/bullets/numbered lists), metadata footers, and tag chips. Long captions overflow across pages using CoreText `CTFramesetter`.
 - **Progress Tracking** — Both export types show a real-time progress popup with percentage using a GCD + Timer polling pattern.
 - **Share Extension** — Share photos from other apps directly into SpotJournal via an App Group shared container. EXIF date and GPS are preserved.
-- **Search & Browse** — Full-text search across captions and places, with date range filtering and swipe-to-delete entries.
-- **Pinch-to-Zoom** — Full-screen zoomable photo viewer with double-tap to zoom and drag to pan.
+- **Search & Browse** — Full-text search across captions and places, with date range filtering, live entry count, and swipe-to-delete entries.
+- **Pinch-to-Zoom** — Full-screen zoomable photo viewer with double-tap to zoom, drag to pan, and swipe down to dismiss.
 - **Markdown-lite Captions** — Captions support inline bullet and numbered list syntax, rendered with proper indentation in both the app UI and PDF export.
+- **Haptic Feedback** — Tactile responses on shutter press, entry save, and entry deletion.
+- **Tags on Pages** — Tag chips are displayed on journal entry pages alongside the timestamp.
 
 ## Tech Stack
 
@@ -215,8 +217,8 @@ SpotJournal/
 ├── JournalPageView.swift    # Entry page layouts (classic, offset, split)
 ├── ReviewView.swift         # New entry review, caption editor, tag picker sheet
 ├── CameraView.swift         # Camera UI overlay with flash/zoom/flip controls
-├── CameraService.swift      # AVFoundation camera session, zoom presets, photo capture
-├── CameraPreviewView.swift  # UIViewRepresentable for AVCaptureVideoPreviewLayer
+├── CameraService.swift      # AVFoundation camera session, zoom presets, ramp zoom, tap-to-focus
+├── CameraPreviewView.swift  # UIViewRepresentable with pinch/tap gesture recognizers
 ├── Components.swift         # Shared UI: photo views, caption rendering, zoom viewer, helpers
 ├── SettingsView.swift       # Settings sheet with export/import and progress overlay
 ├── EntryExporter.swift      # Archive export/import codec and PDF generation

@@ -302,6 +302,7 @@ struct EditEntrySheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
+                        UINotificationFeedbackGenerator().notificationOccurred(.success)
                         saveChanges()
                         dismiss()
                     }

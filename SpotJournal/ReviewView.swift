@@ -45,7 +45,7 @@ struct ReviewView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "checkmark")
                             .font(.system(size: 12, weight: .semibold))
-                        Text("Paste")
+                        Text("Save")
                             .font(.system(size: 13, weight: .semibold))
                     }
                     .foregroundColor(theme.fgOnAccent)
@@ -303,6 +303,7 @@ struct TagPickerSheet: View {
 
                     if !newTagName.trimmingCharacters(in: .whitespaces).isEmpty {
                         Button {
+                            UINotificationFeedbackGenerator().notificationOccurred(.success)
                             let tag = state.createTag(
                                 name: newTagName.trimmingCharacters(in: .whitespaces),
                                 colorHex: Tag.defaultColors[selectedColorIndex]
@@ -326,6 +327,7 @@ struct TagPickerSheet: View {
                         ForEach(existing) { tag in
                             let isSelected = selectedTags.contains { $0.id == tag.id }
                             Button {
+                                UISelectionFeedbackGenerator().selectionChanged()
                                 if isSelected {
                                     selectedTags.removeAll { $0.id == tag.id }
                                 } else {
@@ -349,6 +351,7 @@ struct TagPickerSheet: View {
                             }
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                 Button(role: .destructive) {
+                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                     selectedTags.removeAll { $0.id == tag.id }
                                     state.deleteTag(tag)
                                 } label: {

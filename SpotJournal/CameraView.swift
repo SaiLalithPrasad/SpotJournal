@@ -112,6 +112,7 @@ struct CameraView: View {
                     Spacer()
 
                     Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         cameraService.flashEnabled.toggle()
                     } label: {
                         Image(systemName: cameraService.flashEnabled ? "bolt.fill" : "bolt.slash.fill")
@@ -133,6 +134,7 @@ struct CameraView: View {
                         HStack(spacing: 4) {
                             ForEach(cameraService.availableZoomPresets, id: \.factor) { preset in
                                 Button {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                     cameraService.rampZoom(to: preset.factor)
                                 } label: {
                                     Text(preset.label)
@@ -204,6 +206,7 @@ struct CameraView: View {
 
                         // Flip camera
                         Button {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
                             cameraService.flipCamera()
                         } label: {
                             Image(systemName: "arrow.triangle.2.circlepath.camera")
@@ -249,6 +252,7 @@ struct CameraView: View {
     }
 
     private func shoot() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         shutterFlash = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) {
             shutterFlash = false
