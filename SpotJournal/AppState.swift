@@ -10,7 +10,7 @@ enum AppScreen: Equatable {
     case saved
 }
 
-@Observable
+@MainActor @Observable
 class AppState {
     // MARK: - Persisted Settings (UserDefaults)
 
@@ -56,7 +56,21 @@ class AppState {
     // MARK: - Computed
 
     var theme: JournalTheme { JournalTheme(isDark: isDark) }
-    var latest: JournalEntry? { entries.first }
+    var latest: JournalEntry? {
+        _ = refreshTrigger
+        guard let context = modelContext else { return nil }
+        var descriptor = FetchDescriptor<JournalEntry>(
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        descriptor.fetchLimit = 1
+        return try? context.fetch(descriptor).first
+    }
+
+    var entryCount: Int {
+        _ = refreshTrigger
+        guard let context = modelContext else { return 0 }
+        return (try? context.fetchCount(FetchDescriptor<JournalEntry>())) ?? 0
+    }
 
     func entryById(_ id: String) -> JournalEntry? {
         guard let context = modelContext else { return nil }

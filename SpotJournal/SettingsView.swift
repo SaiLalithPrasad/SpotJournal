@@ -441,14 +441,13 @@ struct SettingsSheet: View {
             }
             defer { url.stopAccessingSecurityScopedResource() }
 
-            guard let data = try? Data(contentsOf: url),
-                  let context = state.modelContext else {
+            guard let context = state.modelContext else {
                 importMessage = "Could not read the file."
                 return
             }
 
             do {
-                let count = try EntryExporter.importArchive(data, into: context)
+                let count = try EntryExporter.importFromFile(url, into: context)
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                 state.refreshTrigger += 1
                 importMessage = count > 0

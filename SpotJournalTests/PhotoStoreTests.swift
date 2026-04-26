@@ -75,4 +75,62 @@ struct PhotoStoreTests {
         PhotoStore.delete(f1)
         PhotoStore.delete(f2)
     }
+
+    // MARK: - Thumbnail Tests
+
+    @Test func saveGeneratesThumbnail() throws {
+        let data = makeTestJPEG()
+        let filename = try PhotoStore.save(data)
+
+        let thumb = PhotoStore.loadThumbnail(filename)
+        #expect(thumb != nil)
+
+        PhotoStore.delete(filename)
+    }
+
+    @Test func loadThumbnailFallsBackToFullImage() throws {
+        let data = makeTestJPEG()
+        let filename = try PhotoStore.save(data)
+
+        // Manually delete only the thumbnail file
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let thumbURL = docs.appendingPathComponent("Photos/THUMB_\(filename)")
+        try? FileManager.default.removeItem(at: thumbURL)
+
+        // Should fall back to loading the full image
+        let result = PhotoStore.loadThumbnail(filename)
+        #expect(result != nil)
+
+        PhotoStore.delete(filename)
+    }
+
+    @Test func deleteRemovesThumbnailToo() throws {
+        let data = makeTestJPEG()
+        let filename = try PhotoStore.save(data)
+
+        PhotoStore.delete(filename)
+
+        // Both original and thumbnail should be gone
+        let result = PhotoStore.loadThumbnail(filename)
+        #expect(result == nil)
+    }
+
+    @Test func generateThumbnailForExistingFile() throws {
+        let data = makeTestJPEG()
+        let filename = try PhotoStore.save(data)
+
+        // Delete the auto-generated thumbnail
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let thumbURL = docs.appendingPathComponent("Photos/THUMB_\(filename)")
+        try? FileManager.default.removeItem(at: thumbURL)
+
+        // Regenerate
+        let success = PhotoStore.generateThumbnail(for: filename)
+        #expect(success)
+
+        let thumb = PhotoStore.loadThumbnail(filename)
+        #expect(thumb != nil)
+
+        PhotoStore.delete(filename)
+    }
 }

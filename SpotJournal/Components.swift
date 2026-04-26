@@ -82,7 +82,56 @@ struct EntryThumbnailView: View {
     let entry: JournalEntry
 
     var body: some View {
-        PhotoContentView(photoSource: entry.photoSource)
+        switch entry.photoSource {
+        case .file(let filename):
+            AsyncThumbnailView(filename: filename)
+        case .placeholder(let key):
+            PlaceholderPhoto(photoKey: key)
+        case .data(let data):
+            if let uiImage = UIImage(data: data) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Color.gray.opacity(0.3)
+            }
+        }
+    }
+}
+
+// MARK: - Async Thumbnail (loads on demand)
+
+struct AsyncThumbnailView: View {
+    let filename: String
+
+    @State private var image: UIImage?
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Color.gray.opacity(0.15)
+            }
+        }
+        .task(id: filename) {
+            if let cached = ThumbnailCache.shared.image(for: filename) {
+                self.image = cached
+                return
+            }
+            let loaded = await Task.detached(priority: .utility) {
+                let thumb = PhotoStore.loadThumbnail(filename)
+                // Lazy-generate thumbnail for older entries
+                PhotoStore.generateThumbnail(for: filename)
+                return thumb
+            }.value
+            if let loaded {
+                ThumbnailCache.shared.setImage(loaded, for: filename)
+                self.image = loaded
+            }
+        }
     }
 }
 

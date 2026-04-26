@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		1C4BD7D72F94708500B2131F /* SpotJournalShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1C4BD7CD2F94708500B2131F /* SpotJournalShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		1CCE9C722F9DC3EE00479454 /* ThumbnailCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CCE9C712F9DC3EE00479454 /* ThumbnailCache.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -44,6 +45,7 @@
 /* Begin PBXFileReference section */
 		1C4733972F981ACA00E7A4FB /* SpotJournalTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpotJournalTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1C4BD7CD2F94708500B2131F /* SpotJournalShare.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SpotJournalShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		1CCE9C712F9DC3EE00479454 /* ThumbnailCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailCache.swift; sourceTree = "<group>"; };
 		1CFEA87C2F93E0C400EDB8E7 /* SpotJournal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SpotJournal.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -110,6 +112,7 @@
 				1C4BD7CE2F94708500B2131F /* SpotJournalShare */,
 				1C4733982F981ACA00E7A4FB /* SpotJournalTests */,
 				1CFEA87D2F93E0C400EDB8E7 /* Products */,
+				1CCE9C712F9DC3EE00479454 /* ThumbnailCache.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -281,6 +284,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1CCE9C722F9DC3EE00479454 /* ThumbnailCache.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

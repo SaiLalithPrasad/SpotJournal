@@ -27,6 +27,26 @@ struct ArchiveTag: Codable {
     let colorHex: UInt
 }
 
+// MARK: - Streaming Archive (v2)
+
+private let archiveMagic = Data("SPOTJNL2".utf8)
+
+struct ArchiveManifest: Codable {
+    let version: Int
+    let exportedAt: Date
+    let entries: [ManifestEntry]
+}
+
+struct ManifestEntry: Codable {
+    let caption: String
+    let date: Date
+    let place: String
+    let importedAt: Date?
+    let photoFilename: String?
+    let placeholderKey: String?
+    let tags: [ArchiveTag]
+}
+
 // MARK: - Exporter
 
 enum EntryExporter {
@@ -66,19 +86,175 @@ enum EntryExporter {
         return try encoder.encode(archive)
     }
 
-    /// Writes the archive to a temp file and returns its URL.
+    /// Writes the archive to a temp file using streaming I/O.
+    /// Only one photo is in memory at a time, preventing OOM on large journals.
     static func exportToFile(_ entries: [JournalEntry], progress: ((Double) -> Void)? = nil) throws -> URL {
-        let data = try exportAll(entries, progress: progress)
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         let dateStr = formatter.string(from: Date())
         let filename = "SpotJournal-\(dateStr).spotjournal"
         let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(filename)
-        try data.write(to: url, options: .atomic)
+
+        try? FileManager.default.removeItem(at: url)
+        FileManager.default.createFile(atPath: url.path, contents: nil)
+        let handle = try FileHandle(forWritingTo: url)
+        defer { try? handle.close() }
+
+        let total = Double(entries.count)
+
+        // Magic bytes
+        try handle.write(contentsOf: archiveMagic)
+
+        // Build manifest (lightweight — no photo data)
+        let manifestEntries = entries.map { entry in
+            ManifestEntry(
+                caption: entry.caption,
+                date: entry.date,
+                place: entry.place,
+                importedAt: entry.importedAt,
+                photoFilename: entry.photoFileName,
+                placeholderKey: entry.photoKeyRaw,
+                tags: entry.tags.map { ArchiveTag(name: $0.name, colorHex: $0.colorHex) }
+            )
+        }
+        let manifest = ArchiveManifest(version: 2, exportedAt: Date(), entries: manifestEntries)
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let manifestData = try encoder.encode(manifest)
+
+        try writeUInt32(UInt32(manifestData.count), to: handle)
+        try handle.write(contentsOf: manifestData)
+
+        // Stream photos one at a time
+        for (index, entry) in entries.enumerated() {
+            try autoreleasepool {
+                if let filename = entry.photoFileName, let photoData = PhotoStore.loadData(filename) {
+                    try writeUInt32(UInt32(photoData.count), to: handle)
+                    try handle.write(contentsOf: photoData)
+                } else {
+                    try writeUInt32(0, to: handle)
+                }
+            }
+            progress?(Double(index + 1) / max(total, 1))
+        }
+
         return url
     }
 
-    /// Imports entries from an archive file into the given context.
+    private static func writeUInt32(_ value: UInt32, to handle: FileHandle) throws {
+        var le = value.littleEndian
+        try handle.write(contentsOf: Data(bytes: &le, count: 4))
+    }
+
+    private static func readUInt32(from handle: FileHandle) throws -> UInt32 {
+        guard let data = try handle.read(upToCount: 4), data.count == 4 else {
+            throw NSError(domain: "SpotJournal", code: 1, userInfo: [NSLocalizedDescriptionKey: "Unexpected end of archive"])
+        }
+        return data.withUnsafeBytes { $0.load(as: UInt32.self).littleEndian }
+    }
+
+    /// Imports entries from an archive file URL using streaming I/O.
+    /// Detects v2 (streaming) vs v1 (binary plist) format automatically.
+    static func importFromFile(_ url: URL, into context: ModelContext) throws -> Int {
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+
+        // Read first 8 bytes to detect format
+        let header = try handle.read(upToCount: 8)
+        try handle.seek(toOffset: 0)
+
+        if header == archiveMagic {
+            return try importV2(handle: handle, into: context)
+        }
+
+        // Legacy v1: load as Data (memory-mapped for efficiency)
+        try handle.close()
+        let data = try Data(contentsOf: url, options: .mappedIfSafe)
+        return try importArchive(data, into: context)
+    }
+
+    /// Streaming import for v2 archives. Only one photo in memory at a time.
+    private static func importV2(handle: FileHandle, into context: ModelContext) throws -> Int {
+        // Skip magic
+        try handle.seek(toOffset: 8)
+
+        // Read manifest
+        let manifestLength = try readUInt32(from: handle)
+        guard let manifestData = try handle.read(upToCount: Int(manifestLength)),
+              manifestData.count == Int(manifestLength) else {
+            throw NSError(domain: "SpotJournal", code: 2, userInfo: [NSLocalizedDescriptionKey: "Invalid archive manifest"])
+        }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let manifest = try decoder.decode(ArchiveManifest.self, from: manifestData)
+
+        // Load existing dates for deduplication
+        let existingEntries = (try? context.fetch(FetchDescriptor<JournalEntry>())) ?? []
+        let existingDates = Set(existingEntries.map { $0.date.timeIntervalSince1970 })
+        let existingTags = (try? context.fetch(FetchDescriptor<Tag>())) ?? []
+
+        var importedCount = 0
+
+        for manifestEntry in manifest.entries {
+            // Read photo data for this entry (even if skipping, to advance file position)
+            let photoLength = try readUInt32(from: handle)
+            let photoData: Data? = photoLength > 0
+                ? try handle.read(upToCount: Int(photoLength))
+                : nil
+
+            // Skip duplicates
+            if existingDates.contains(manifestEntry.date.timeIntervalSince1970) {
+                continue
+            }
+
+            let entry: JournalEntry
+
+            if let photoData {
+                guard let filename = try? PhotoStore.save(photoData) else { continue }
+                entry = JournalEntry(
+                    id: JournalEntry.generateId(),
+                    photoFileName: filename,
+                    caption: manifestEntry.caption,
+                    date: manifestEntry.date,
+                    place: manifestEntry.place,
+                    importedAt: manifestEntry.importedAt
+                )
+            } else if let placeholderKey = manifestEntry.placeholderKey,
+                      let key = PhotoKey(rawValue: placeholderKey) {
+                entry = JournalEntry(
+                    id: JournalEntry.generateId(),
+                    photoKey: key,
+                    caption: manifestEntry.caption,
+                    date: manifestEntry.date,
+                    place: manifestEntry.place
+                )
+                entry.importedAt = manifestEntry.importedAt
+            } else {
+                continue
+            }
+
+            // Resolve tags
+            var entryTags: [Tag] = []
+            for archiveTag in manifestEntry.tags {
+                if let existing = existingTags.first(where: { $0.name == archiveTag.name }) {
+                    entryTags.append(existing)
+                } else {
+                    let newTag = Tag(name: archiveTag.name, colorHex: archiveTag.colorHex)
+                    context.insert(newTag)
+                    entryTags.append(newTag)
+                }
+            }
+            entry.tags = entryTags
+
+            context.insert(entry)
+            importedCount += 1
+        }
+
+        try context.save()
+        return importedCount
+    }
+
+    /// Imports entries from legacy v1 binary plist data.
     /// Returns the number of entries imported.
     static func importArchive(_ data: Data, into context: ModelContext) throws -> Int {
         let archive = try PropertyListDecoder().decode(JournalArchive.self, from: data)

@@ -173,7 +173,7 @@ struct ModelsTests {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(for: JournalEntry.self, Tag.self, configurations: config)
         let state = AppState()
-        state.modelContext = container.mainContext
+        state.modelContext = ModelContext(container)
         return state
     }
 

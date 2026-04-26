@@ -1,7 +1,9 @@
 import Testing
 import Foundation
+import SwiftData
 @testable import SpotJournal
 
+@Suite(.serialized)
 struct EntryExporterTests {
 
     // MARK: - Archive Round-Trip
@@ -151,6 +153,123 @@ struct EntryExporterTests {
     @Test func pdfExportFallbackJournalName() {
         let url = PDFExporter.exportPDFToFile(entries: [], journalName: "", captionFont: .sans)
         #expect(url.lastPathComponent.contains("SpotJournal"))
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    // MARK: - Streaming Archive (v2)
+
+    @Test func exportToFileCreatesV2Format() throws {
+        let entries = makeSampleEntries()
+        let url = try EntryExporter.exportToFile(entries)
+        let data = try Data(contentsOf: url, options: .mappedIfSafe)
+
+        // Should start with "SPOTJNL2" magic bytes
+        let magic = String(data: data.prefix(8), encoding: .utf8)
+        #expect(magic == "SPOTJNL2")
+
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    @Test func exportToFileReportsProgress() throws {
+        let entries = makeSampleEntries()
+        var progressValues: [Double] = []
+        let url = try EntryExporter.exportToFile(entries) { p in
+            progressValues.append(p)
+        }
+        #expect(progressValues.count == entries.count)
+        #expect(progressValues.last == 1.0)
+
+        for i in 1..<progressValues.count {
+            #expect(progressValues[i] > progressValues[i - 1])
+        }
+
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    /// Copy exported file to a unique path to avoid race conditions with parallel tests.
+    private func uniqueCopy(of url: URL) throws -> URL {
+        let unique = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("\(UUID().uuidString).spotjournal")
+        try FileManager.default.copyItem(at: url, to: unique)
+        return unique
+    }
+
+    @Test @MainActor func v2ExportImportRoundTrip() throws {
+        // Export some entries
+        let original = makeSampleEntries()
+        let exportedURL = try EntryExporter.exportToFile(original)
+        let url = try uniqueCopy(of: exportedURL)
+        try? FileManager.default.removeItem(at: exportedURL)
+
+        // Create in-memory SwiftData context for import
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: JournalEntry.self, Tag.self, configurations: config)
+        let context = container.mainContext
+
+        // Import from the v2 file
+        let count = try EntryExporter.importFromFile(url, into: context)
+        #expect(count == original.count)
+
+        // Verify entries were imported
+        let imported = try context.fetch(FetchDescriptor<JournalEntry>())
+        #expect(imported.count == original.count)
+
+        // Verify fields preserved
+        let sortedOriginal = original.sorted { $0.caption < $1.caption }
+        let sortedImported = imported.sorted { $0.caption < $1.caption }
+        for (orig, imp) in zip(sortedOriginal, sortedImported) {
+            #expect(imp.caption == orig.caption)
+            #expect(imp.place == orig.place)
+        }
+
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    @Test @MainActor func v2ImportDeduplicatesByDate() throws {
+        let entries = [JournalEntry(id: "dup-1", photoKey: .coffee,
+                                     caption: "Test", date: Date(), place: "NYC")]
+        let exportedURL = try EntryExporter.exportToFile(entries)
+        let url = try uniqueCopy(of: exportedURL)
+        try? FileManager.default.removeItem(at: exportedURL)
+
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: JournalEntry.self, Tag.self, configurations: config)
+        let context = container.mainContext
+
+        // Import twice
+        let first = try EntryExporter.importFromFile(url, into: context)
+        #expect(first == 1)
+        let second = try EntryExporter.importFromFile(url, into: context)
+        #expect(second == 0)  // Deduplicated
+
+        let all = try context.fetch(FetchDescriptor<JournalEntry>())
+        #expect(all.count == 1)
+
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    @Test @MainActor func v2ImportPreservesTags() throws {
+        let entry = JournalEntry(id: "tag-rt", photoKey: .trail,
+                                  caption: "Tagged entry", date: Date(), place: "")
+        let tag = Tag(name: "Travel", colorHex: 0x2E86AB)
+        entry.tags = [tag]
+
+        let exportedURL = try EntryExporter.exportToFile([entry])
+        let url = try uniqueCopy(of: exportedURL)
+        try? FileManager.default.removeItem(at: exportedURL)
+
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: JournalEntry.self, Tag.self, configurations: config)
+        let context = container.mainContext
+
+        let count = try EntryExporter.importFromFile(url, into: context)
+        #expect(count == 1)
+
+        let imported = try context.fetch(FetchDescriptor<JournalEntry>())
+        #expect(imported[0].tags.count == 1)
+        #expect(imported[0].tags[0].name == "Travel")
+        #expect(imported[0].tags[0].colorHex == 0x2E86AB)
+
         try? FileManager.default.removeItem(at: url)
     }
 }
