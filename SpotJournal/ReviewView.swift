@@ -266,6 +266,8 @@ struct TagPickerSheet: View {
     @Binding var selectedTags: [Tag]
     @State private var newTagName = ""
     @State private var selectedColorIndex = 0
+    @State private var editingTag: Tag?
+    @State private var editingTagName = ""
 
     var body: some View {
         let theme = state.theme
@@ -358,6 +360,15 @@ struct TagPickerSheet: View {
                                     Label("Delete", systemImage: "trash")
                                 }
                             }
+                            .swipeActions(edge: .leading) {
+                                Button {
+                                    editingTagName = tag.name
+                                    editingTag = tag
+                                } label: {
+                                    Label("Rename", systemImage: "pencil")
+                                }
+                                .tint(.orange)
+                            }
                         }
                     }
                 }
@@ -371,5 +382,23 @@ struct TagPickerSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+        .alert("Rename Tag", isPresented: .init(
+            get: { editingTag != nil },
+            set: { if !$0 { editingTag = nil } }
+        )) {
+            TextField("Tag name", text: $editingTagName)
+            Button("Save") {
+                if let tag = editingTag {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    state.renameTag(tag, to: editingTagName)
+                }
+                editingTag = nil
+            }
+            Button("Cancel", role: .cancel) {
+                editingTag = nil
+            }
+        } message: {
+            Text("Enter a new name for this tag.")
+        }
     }
 }

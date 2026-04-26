@@ -128,6 +128,13 @@ class AppState {
         return tag
     }
 
+    func renameTag(_ tag: Tag, to newName: String) {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        tag.name = trimmed
+        try? modelContext?.save()
+    }
+
     func deleteTag(_ tag: Tag) {
         guard let context = modelContext else { return }
         // Remove the tag from all entries that reference it
