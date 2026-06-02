@@ -203,7 +203,7 @@ struct EntryExporterTests {
 
         // Create in-memory SwiftData context for import
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: JournalEntry.self, Tag.self, configurations: config)
+        let container = try ModelContainer(for: JournalEntry.self, Tag.self, Mood.self, configurations: config)
         let context = container.mainContext
 
         // Import from the v2 file
@@ -233,7 +233,7 @@ struct EntryExporterTests {
         try? FileManager.default.removeItem(at: exportedURL)
 
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: JournalEntry.self, Tag.self, configurations: config)
+        let container = try ModelContainer(for: JournalEntry.self, Tag.self, Mood.self, configurations: config)
         let context = container.mainContext
 
         // Import twice
@@ -259,7 +259,7 @@ struct EntryExporterTests {
         try? FileManager.default.removeItem(at: exportedURL)
 
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: JournalEntry.self, Tag.self, configurations: config)
+        let container = try ModelContainer(for: JournalEntry.self, Tag.self, Mood.self, configurations: config)
         let context = container.mainContext
 
         let count = try EntryExporter.importFromFile(url, into: context)
@@ -269,6 +269,45 @@ struct EntryExporterTests {
         #expect(imported[0].tags.count == 1)
         #expect(imported[0].tags[0].name == "Travel")
         #expect(imported[0].tags[0].colorHex == 0x2E86AB)
+
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    @Test func archivePreservesMoods() throws {
+        let entry = JournalEntry(id: "rt-m", photoKey: .trail,
+                                 caption: "Moody", date: Date(), place: "")
+        let mood = Mood(name: "Happy", emoji: "\u{1F60A}")
+        entry.moods = [mood]
+
+        let data = try EntryExporter.exportAll([entry])
+        let archive = try PropertyListDecoder().decode(JournalArchive.self, from: data)
+
+        #expect(archive.entries[0].moods?.count == 1)
+        #expect(archive.entries[0].moods?[0].name == "Happy")
+        #expect(archive.entries[0].moods?[0].emoji == "\u{1F60A}")
+    }
+
+    @Test @MainActor func v2ImportPreservesMoods() throws {
+        let entry = JournalEntry(id: "mood-rt", photoKey: .trail,
+                                  caption: "Moody entry", date: Date(), place: "")
+        let mood = Mood(name: "Calm", emoji: "\u{1F9D8}")
+        entry.moods = [mood]
+
+        let exportedURL = try EntryExporter.exportToFile([entry])
+        let url = try uniqueCopy(of: exportedURL)
+        try? FileManager.default.removeItem(at: exportedURL)
+
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: JournalEntry.self, Tag.self, Mood.self, configurations: config)
+        let context = container.mainContext
+
+        let count = try EntryExporter.importFromFile(url, into: context)
+        #expect(count == 1)
+
+        let imported = try context.fetch(FetchDescriptor<JournalEntry>())
+        #expect(imported[0].moods.count == 1)
+        #expect(imported[0].moods[0].name == "Calm")
+        #expect(imported[0].moods[0].emoji == "\u{1F9D8}")
 
         try? FileManager.default.removeItem(at: url)
     }

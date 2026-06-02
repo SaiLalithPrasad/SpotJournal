@@ -94,7 +94,7 @@ class AppState {
 
     // MARK: - Actions
 
-    func savePage(caption: String, tags: [Tag] = []) {
+    func savePage(caption: String, tags: [Tag] = [], moods: [Mood] = []) {
         guard let photoData = pendingPhotoData, let context = modelContext else { return }
 
         guard let filename = try? PhotoStore.save(photoData) else { return }
@@ -112,6 +112,7 @@ class AppState {
             importedAt: importedAt
         )
         entry.tags = tags
+        entry.moods = moods
         context.insert(entry)
         try? context.save()
         UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -156,6 +157,44 @@ class AppState {
             entry.tags.removeAll { $0.id == tag.id }
         }
         context.delete(tag)
+        try? context.save()
+    }
+
+    // MARK: - Moods
+
+    var allMoods: [Mood] {
+        guard let context = modelContext else { return [] }
+        let descriptor = FetchDescriptor<Mood>(sortBy: [SortDescriptor(\.name)])
+        return (try? context.fetch(descriptor)) ?? []
+    }
+
+    func createMood(name: String, emoji: String, colorHex: UInt) -> Mood {
+        let mood = Mood(name: name, emoji: emoji, colorHex: colorHex)
+        modelContext?.insert(mood)
+        try? modelContext?.save()
+        return mood
+    }
+
+    func renameMood(_ mood: Mood, to newName: String) {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        mood.name = trimmed
+        try? modelContext?.save()
+    }
+
+    func updateMoodEmoji(_ mood: Mood, to newEmoji: String) {
+        let trimmed = newEmoji.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        mood.emoji = trimmed
+        try? modelContext?.save()
+    }
+
+    func deleteMood(_ mood: Mood) {
+        guard let context = modelContext else { return }
+        for entry in mood.entries {
+            entry.moods.removeAll { $0.id == mood.id }
+        }
+        context.delete(mood)
         try? context.save()
     }
 

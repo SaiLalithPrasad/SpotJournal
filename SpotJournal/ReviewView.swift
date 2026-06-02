@@ -6,6 +6,8 @@ struct ReviewView: View {
     @State private var listMode = false
     @State private var selectedTags: [Tag] = []
     @State private var showingTagSheet = false
+    @State private var selectedMoods: [Mood] = []
+    @State private var showingMoodSheet = false
     @FocusState private var captionFocused: Bool
 
     var body: some View {
@@ -40,7 +42,7 @@ struct ReviewView: View {
                 Spacer()
 
                 Button {
-                    state.savePage(caption: caption.trimmingCharacters(in: .whitespacesAndNewlines), tags: selectedTags)
+                    state.savePage(caption: caption.trimmingCharacters(in: .whitespacesAndNewlines), tags: selectedTags, moods: selectedMoods)
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "checkmark")
@@ -127,6 +129,16 @@ struct ReviewView: View {
                     )
                     .padding(.horizontal, 24)
 
+                    Spacer().frame(height: 12)
+
+                    // Moods
+                    MoodSelectorView(
+                        selectedMoods: $selectedMoods,
+                        showingMoodSheet: $showingMoodSheet,
+                        theme: theme
+                    )
+                    .padding(.horizontal, 24)
+
                     Spacer().frame(height: 16)
 
                     // Timestamp
@@ -144,6 +156,10 @@ struct ReviewView: View {
         .background(theme.paperBg)
         .sheet(isPresented: $showingTagSheet) {
             TagPickerSheet(selectedTags: $selectedTags)
+                .environment(state)
+        }
+        .sheet(isPresented: $showingMoodSheet) {
+            MoodPickerSheet(selectedMoods: $selectedMoods)
                 .environment(state)
         }
         .onAppear {
@@ -399,6 +415,254 @@ struct TagPickerSheet: View {
             }
         } message: {
             Text("Enter a new name for this tag.")
+        }
+    }
+}
+
+// MARK: - Mood Selector (inline chips + add button)
+
+private struct MoodSelectorView: View {
+    @Binding var selectedMoods: [Mood]
+    @Binding var showingMoodSheet: Bool
+    let theme: JournalTheme
+
+    var body: some View {
+        FlowLayout(spacing: 8) {
+            ForEach(selectedMoods) { mood in
+                HStack(spacing: 4) {
+                    Text(mood.emoji)
+                        .font(.system(size: 14))
+                    Text(mood.name)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(theme.fg1)
+                    Button {
+                        selectedMoods.removeAll { $0.id == mood.id }
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundColor(theme.fg3)
+                            .frame(width: 22, height: 22)
+                            .contentShape(Rectangle())
+                    }
+                }
+                .padding(.leading, 10)
+                .padding(.trailing, 4)
+                .padding(.vertical, 4)
+                .background(
+                    Capsule().fill(mood.color.opacity(0.15))
+                        .overlay(Capsule().stroke(mood.color.opacity(0.3), lineWidth: 1))
+                )
+            }
+
+            Button {
+                showingMoodSheet = true
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "face.smiling")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text("Mood")
+                        .font(.system(size: 13, weight: .medium))
+                }
+                .foregroundColor(theme.fg2)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule().fill(theme.surfaceSunken)
+                        .overlay(Capsule().stroke(theme.border1, lineWidth: 1))
+                )
+            }
+        }
+    }
+}
+
+// MARK: - Mood Picker Sheet
+
+struct MoodPickerSheet: View {
+    @Environment(AppState.self) private var state
+    @Environment(\.dismiss) private var dismiss
+    @Binding var selectedMoods: [Mood]
+    @State private var newMoodName = ""
+    @State private var newMoodEmoji = "\u{1F60A}"
+    @State private var newMoodColorIndex = 0
+    @State private var editingMood: Mood?
+    @State private var editingMoodName = ""
+    @State private var editingMoodEmoji = ""
+
+    var body: some View {
+        let theme = state.theme
+
+        NavigationStack {
+            List {
+                // Create new mood
+                Section("Create Mood") {
+                    TextField("Mood name", text: $newMoodName)
+                        .font(.system(size: 15))
+
+                    // Emoji palette
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 6), spacing: 6) {
+                        ForEach(Mood.defaultEmojis, id: \.self) { emoji in
+                            Button {
+                                newMoodEmoji = emoji
+                            } label: {
+                                Text(emoji)
+                                    .font(.system(size: 22))
+                                    .frame(width: 38, height: 38)
+                                    .background(
+                                        Circle()
+                                            .fill(newMoodEmoji == emoji ? theme.accentSoft : Color.clear)
+                                            .overlay(
+                                                Circle().stroke(
+                                                    newMoodEmoji == emoji ? theme.accent : Color.clear,
+                                                    lineWidth: 2
+                                                )
+                                            )
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+
+                    HStack(spacing: 8) {
+                        Text("Custom:")
+                            .font(.system(size: 13))
+                            .foregroundColor(theme.fg3)
+                        TextField("\u{1F600}", text: $newMoodEmoji)
+                            .font(.system(size: 18))
+                            .frame(width: 44)
+                            .multilineTextAlignment(.center)
+                    }
+
+                    // Color picker
+                    HStack(spacing: 0) {
+                        ForEach(0..<Tag.defaultColors.count, id: \.self) { i in
+                            Button {
+                                newMoodColorIndex = i
+                            } label: {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color(hex: Tag.defaultColors[i]))
+                                        .frame(width: 28, height: 28)
+
+                                    if newMoodColorIndex == i {
+                                        Circle()
+                                            .stroke(theme.fg1, lineWidth: 2.5)
+                                            .frame(width: 34, height: 34)
+                                    }
+                                }
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+
+                    if !newMoodName.trimmingCharacters(in: .whitespaces).isEmpty
+                        && !newMoodEmoji.trimmingCharacters(in: .whitespaces).isEmpty {
+                        Button {
+                            UINotificationFeedbackGenerator().notificationOccurred(.success)
+                            let mood = state.createMood(
+                                name: newMoodName.trimmingCharacters(in: .whitespaces),
+                                emoji: newMoodEmoji.trimmingCharacters(in: .whitespaces),
+                                colorHex: Tag.defaultColors[newMoodColorIndex]
+                            )
+                            selectedMoods.append(mood)
+                            newMoodName = ""
+                            newMoodEmoji = "\u{1F60A}"
+                            newMoodColorIndex = 0
+                        } label: {
+                            HStack {
+                                Image(systemName: "plus.circle.fill")
+                                Text("Create \(newMoodEmoji) \"\(newMoodName.trimmingCharacters(in: .whitespaces))\"")
+                            }
+                            .foregroundColor(theme.accent)
+                        }
+                    }
+                }
+
+                // Existing moods
+                let existing = state.allMoods
+                if !existing.isEmpty {
+                    Section("Existing Moods") {
+                        ForEach(existing) { mood in
+                            let isSelected = selectedMoods.contains { $0.id == mood.id }
+                            Button {
+                                UISelectionFeedbackGenerator().selectionChanged()
+                                if isSelected {
+                                    selectedMoods.removeAll { $0.id == mood.id }
+                                } else {
+                                    selectedMoods.append(mood)
+                                }
+                            } label: {
+                                HStack(spacing: 10) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(mood.color.opacity(0.18))
+                                            .frame(width: 32, height: 32)
+                                        Text(mood.emoji)
+                                            .font(.system(size: 18))
+                                    }
+                                    Text(mood.name)
+                                        .font(.system(size: 15))
+                                        .foregroundColor(theme.fg1)
+                                    Spacer()
+                                    if isSelected {
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundColor(theme.accent)
+                                    }
+                                }
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                    selectedMoods.removeAll { $0.id == mood.id }
+                                    state.deleteMood(mood)
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
+                            .swipeActions(edge: .leading) {
+                                Button {
+                                    editingMoodName = mood.name
+                                    editingMoodEmoji = mood.emoji
+                                    editingMood = mood
+                                } label: {
+                                    Label("Edit", systemImage: "pencil")
+                                }
+                                .tint(.orange)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Moods")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .alert("Edit Mood", isPresented: .init(
+            get: { editingMood != nil },
+            set: { if !$0 { editingMood = nil } }
+        )) {
+            TextField("Mood name", text: $editingMoodName)
+            TextField("Emoji", text: $editingMoodEmoji)
+            Button("Save") {
+                if let mood = editingMood {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    state.renameMood(mood, to: editingMoodName)
+                    state.updateMoodEmoji(mood, to: editingMoodEmoji)
+                }
+                editingMood = nil
+            }
+            Button("Cancel", role: .cancel) {
+                editingMood = nil
+            }
+        } message: {
+            Text("Update the name and emoji for this mood.")
         }
     }
 }

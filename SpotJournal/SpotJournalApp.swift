@@ -10,7 +10,7 @@ struct SpotJournalApp: App {
 
     init() {
         do {
-            container = try ModelContainer(for: JournalEntry.self, Tag.self)
+            container = try ModelContainer(for: JournalEntry.self, Tag.self, Mood.self)
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")
         }
@@ -24,6 +24,7 @@ struct SpotJournalApp: App {
                 .onAppear {
                     appState.modelContext = container.mainContext
                     seedIfNeeded(context: container.mainContext)
+                    seedMoodsIfNeeded(context: container.mainContext)
                     processPendingShares(context: container.mainContext)
                 }
                 .onChange(of: scenePhase) { _, newPhase in
@@ -43,6 +44,17 @@ struct SpotJournalApp: App {
 
         for entry in makeSampleEntries() {
             context.insert(entry)
+        }
+        try? context.save()
+    }
+
+    private func seedMoodsIfNeeded(context: ModelContext) {
+        let descriptor = FetchDescriptor<Mood>()
+        let count = (try? context.fetchCount(descriptor)) ?? 0
+        guard count == 0 else { return }
+
+        for seed in Mood.defaultSeeds {
+            context.insert(Mood(name: seed.name, emoji: seed.emoji, colorHex: seed.colorHex))
         }
         try? context.save()
     }

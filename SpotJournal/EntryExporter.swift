@@ -20,11 +20,18 @@ struct ArchiveEntry: Codable {
     let photoData: Data?
     let placeholderKey: String?
     let tags: [ArchiveTag]
+    let moods: [ArchiveMood]?
 }
 
 struct ArchiveTag: Codable {
     let name: String
     let colorHex: UInt
+}
+
+struct ArchiveMood: Codable {
+    let name: String
+    let emoji: String
+    let colorHex: UInt?
 }
 
 // MARK: - Streaming Archive (v2)
@@ -45,6 +52,7 @@ struct ManifestEntry: Codable {
     let photoFilename: String?
     let placeholderKey: String?
     let tags: [ArchiveTag]
+    let moods: [ArchiveMood]?
 }
 
 // MARK: - Exporter
@@ -61,6 +69,7 @@ enum EntryExporter {
             }
 
             let tags = entry.tags.map { ArchiveTag(name: $0.name, colorHex: $0.colorHex) }
+            let moods = entry.moods.map { ArchiveMood(name: $0.name, emoji: $0.emoji, colorHex: $0.colorHex) }
 
             progress?(Double(index + 1) / max(total, 1))
 
@@ -71,7 +80,8 @@ enum EntryExporter {
                 importedAt: entry.importedAt,
                 photoData: photoData,
                 placeholderKey: entry.photoKeyRaw,
-                tags: tags
+                tags: tags,
+                moods: moods
             )
         }
 
@@ -114,7 +124,8 @@ enum EntryExporter {
                 importedAt: entry.importedAt,
                 photoFilename: entry.photoFileName,
                 placeholderKey: entry.photoKeyRaw,
-                tags: entry.tags.map { ArchiveTag(name: $0.name, colorHex: $0.colorHex) }
+                tags: entry.tags.map { ArchiveTag(name: $0.name, colorHex: $0.colorHex) },
+                moods: entry.moods.map { ArchiveMood(name: $0.name, emoji: $0.emoji, colorHex: $0.colorHex) }
             )
         }
         let manifest = ArchiveManifest(version: 2, exportedAt: Date(), entries: manifestEntries)
@@ -192,6 +203,7 @@ enum EntryExporter {
         let existingEntries = (try? context.fetch(FetchDescriptor<JournalEntry>())) ?? []
         let existingDates = Set(existingEntries.map { $0.date.timeIntervalSince1970 })
         let existingTags = (try? context.fetch(FetchDescriptor<Tag>())) ?? []
+        var existingMoods = (try? context.fetch(FetchDescriptor<Mood>())) ?? []
 
         var importedCount = 0
 
@@ -246,6 +258,24 @@ enum EntryExporter {
             }
             entry.tags = entryTags
 
+            // Resolve moods
+            var entryMoods: [Mood] = []
+            for archiveMood in manifestEntry.moods ?? [] {
+                if let existing = existingMoods.first(where: { $0.name == archiveMood.name }) {
+                    entryMoods.append(existing)
+                } else {
+                    let newMood = Mood(
+                        name: archiveMood.name,
+                        emoji: archiveMood.emoji,
+                        colorHex: archiveMood.colorHex ?? Tag.defaultColors[0]
+                    )
+                    context.insert(newMood)
+                    existingMoods.append(newMood)
+                    entryMoods.append(newMood)
+                }
+            }
+            entry.moods = entryMoods
+
             context.insert(entry)
             importedCount += 1
         }
@@ -265,6 +295,7 @@ enum EntryExporter {
 
         // Load existing tags for reuse
         let existingTags = (try? context.fetch(FetchDescriptor<Tag>())) ?? []
+        var existingMoods = (try? context.fetch(FetchDescriptor<Mood>())) ?? []
 
         var importedCount = 0
 
@@ -314,6 +345,24 @@ enum EntryExporter {
                 }
             }
             entry.tags = entryTags
+
+            // Resolve moods
+            var entryMoods: [Mood] = []
+            for archiveMood in archiveEntry.moods ?? [] {
+                if let existing = existingMoods.first(where: { $0.name == archiveMood.name }) {
+                    entryMoods.append(existing)
+                } else {
+                    let newMood = Mood(
+                        name: archiveMood.name,
+                        emoji: archiveMood.emoji,
+                        colorHex: archiveMood.colorHex ?? Tag.defaultColors[0]
+                    )
+                    context.insert(newMood)
+                    existingMoods.append(newMood)
+                    entryMoods.append(newMood)
+                }
+            }
+            entry.moods = entryMoods
 
             context.insert(entry)
             importedCount += 1
@@ -530,7 +579,7 @@ enum PDFExporter {
         let captionHeight = measureHeight(of: attrCaption, width: contentRect.width)
 
         // Estimate metadata height
-        let metaEstimate: CGFloat = 40 + (entry.tags.isEmpty ? 0 : 28)
+        let metaEstimate: CGFloat = 40 + (entry.tags.isEmpty ? 0 : 28) + (entry.moods.isEmpty ? 0 : 28)
         let spaceOnFirstPage = contentRect.maxY - cursorY
 
         if captionHeight + metaEstimate + Layout.metaTopPadding <= spaceOnFirstPage {
@@ -681,6 +730,43 @@ enum PDFExporter {
                     withAttributes: tagAttrs
                 )
                 tagX += chipW + Layout.tagSpacing
+            }
+            currentY += 20
+        }
+
+        // Moods
+        if !entry.moods.isEmpty {
+            currentY += 4
+            var moodX = contentRect.minX
+            let moodFont = UIFont.systemFont(ofSize: Layout.tagFontSize, weight: .medium)
+            let moodAttrs: [NSAttributedString.Key: Any] = [
+                .font: moodFont,
+                .foregroundColor: inkMedium
+            ]
+
+            for mood in entry.moods {
+                let label = "\(mood.emoji) \(mood.name)"
+                let labelSize = (label as NSString).size(withAttributes: moodAttrs)
+                let chipW = labelSize.width + Layout.tagChipPaddingH * 2
+                let chipH = labelSize.height + Layout.tagChipPaddingV * 2
+
+                if moodX + chipW > contentRect.maxX {
+                    moodX = contentRect.minX
+                    currentY += chipH + 4
+                }
+
+                let chipRect = CGRect(x: moodX, y: currentY, width: chipW, height: chipH)
+                let chipPath = UIBezierPath(roundedRect: chipRect,
+                                            cornerRadius: Layout.tagChipCorner)
+                UIColor(red: 0.94, green: 0.92, blue: 0.88, alpha: 1).setFill()
+                chipPath.fill()
+
+                (label as NSString).draw(
+                    at: CGPoint(x: moodX + Layout.tagChipPaddingH,
+                                y: currentY + Layout.tagChipPaddingV),
+                    withAttributes: moodAttrs
+                )
+                moodX += chipW + Layout.tagSpacing
             }
             currentY += 20
         }

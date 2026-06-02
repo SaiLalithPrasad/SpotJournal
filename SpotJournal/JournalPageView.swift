@@ -31,22 +31,31 @@ struct JournalPageView: View {
     @ViewBuilder
     private func tagChipsView(centered: Bool) -> some View {
         if !entry.tags.isEmpty {
-            FlowLayout(spacing: 6) {
+            FlowLayout(spacing: 14) {
                 ForEach(entry.tags) { tag in
-                    HStack(spacing: 4) {
+                    HStack(spacing: 5) {
                         Circle()
                             .fill(tag.color)
-                            .frame(width: 6, height: 6)
+                            .frame(width: 7, height: 7)
                         Text(tag.name)
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.system(size: 12, design: .serif))
+                            .tracking(0.2)
                             .foregroundColor(theme.ink2)
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        Capsule().fill(tag.color.opacity(0.1))
-                            .overlay(Capsule().stroke(tag.color.opacity(0.2), lineWidth: 0.5))
-                    )
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
+        }
+    }
+
+    @ViewBuilder
+    private func moodChipsView(centered: Bool) -> some View {
+        if !entry.moods.isEmpty {
+            HStack(spacing: 8) {
+                ForEach(entry.moods) { mood in
+                    Text(mood.emoji)
+                        .font(.system(size: 22))
+                        .accessibilityLabel(mood.name)
                 }
             }
             .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
@@ -77,14 +86,17 @@ struct JournalPageView: View {
                 )
                 .padding(.horizontal, 6)
 
+                moodChipsView(centered: true)
+                    .padding(.top, 20)
+
                 PageTimestampView(
                     date: entry.date, place: entry.place,
                     alignLeading: false, theme: theme
                 )
-                .padding(.top, 32)
+                .padding(.top, entry.moods.isEmpty ? 32 : 16)
 
                 tagChipsView(centered: true)
-                    .padding(.top, 12)
+                    .padding(.top, 14)
 
                 Spacer().frame(height: 40)
             }
@@ -117,14 +129,17 @@ struct JournalPageView: View {
                     theme: theme
                 )
 
+                moodChipsView(centered: false)
+                    .padding(.top, 20)
+
                 PageTimestampView(
                     date: entry.date, place: entry.place,
                     alignLeading: true, theme: theme
                 )
-                .padding(.top, 32)
+                .padding(.top, entry.moods.isEmpty ? 32 : 16)
 
                 tagChipsView(centered: false)
-                    .padding(.top, 12)
+                    .padding(.top, 14)
 
                 Spacer().frame(height: 40)
             }
@@ -162,14 +177,17 @@ struct JournalPageView: View {
                     theme: theme
                 )
 
+                moodChipsView(centered: false)
+                    .padding(.top, 18)
+
                 PageTimestampView(
                     date: entry.date, place: entry.place,
                     alignLeading: true, theme: theme
                 )
-                .padding(.top, 28)
+                .padding(.top, entry.moods.isEmpty ? 28 : 14)
 
                 tagChipsView(centered: false)
-                    .padding(.top, 12)
+                    .padding(.top, 14)
 
                 Spacer().frame(height: 40)
             }

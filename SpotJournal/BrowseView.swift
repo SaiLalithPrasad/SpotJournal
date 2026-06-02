@@ -8,6 +8,7 @@ struct BrowseView: View {
     @State private var selectedDate: Date?
     @State private var searchText = ""
     @State private var selectedFilterTags: [Tag] = []
+    @State private var selectedFilterMoods: [Mood] = []
     @State private var entryToDelete: JournalEntry?
 
     var body: some View {
@@ -76,7 +77,7 @@ struct BrowseView: View {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 14))
                     .foregroundColor(theme.fg3)
-                TextField("Search captions, places, or tags\u{2026}", text: $searchText)
+                TextField("Search captions, places, tags, or moods\u{2026}", text: $searchText)
                     .font(.system(size: 15))
                     .foregroundColor(theme.fg1)
                 if !searchText.isEmpty {
@@ -98,7 +99,7 @@ struct BrowseView: View {
             .padding(.bottom, 8)
 
             // Active filter chips
-            if selectedDate != nil || !selectedFilterTags.isEmpty {
+            if selectedDate != nil || !selectedFilterTags.isEmpty || !selectedFilterMoods.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         // Date chip
@@ -154,6 +155,35 @@ struct BrowseView: View {
                                     .overlay(Capsule().stroke(tag.color.opacity(0.3), lineWidth: 1))
                             )
                         }
+
+                        // Mood chips
+                        ForEach(selectedFilterMoods) { mood in
+                            HStack(spacing: 4) {
+                                Text(mood.emoji)
+                                    .font(.system(size: 13))
+                                Text(mood.name)
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(theme.fg1)
+                                Button {
+                                    withAnimation(.easeOut(duration: 0.12)) {
+                                        selectedFilterMoods.removeAll { $0.id == mood.id }
+                                    }
+                                } label: {
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(theme.fg3)
+                                        .frame(width: 22, height: 22)
+                                        .contentShape(Rectangle())
+                                }
+                            }
+                            .padding(.leading, 10)
+                            .padding(.trailing, 4)
+                            .padding(.vertical, 4)
+                            .background(
+                                Capsule().fill(mood.color.opacity(0.15))
+                                    .overlay(Capsule().stroke(mood.color.opacity(0.3), lineWidth: 1))
+                            )
+                        }
                     }
                     .padding(.horizontal, 16)
                 }
@@ -190,6 +220,47 @@ struct BrowseView: View {
                                         .overlay(
                                             Capsule().stroke(
                                                 isSelected ? tag.color.opacity(0.3) : theme.border1,
+                                                lineWidth: 1
+                                            )
+                                        )
+                                )
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+                .padding(.bottom, 8)
+            }
+
+            // Mood filter bar
+            if !state.allMoods.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(state.allMoods) { mood in
+                            let isSelected = selectedFilterMoods.contains { $0.id == mood.id }
+                            Button {
+                                withAnimation(.easeOut(duration: 0.12)) {
+                                    if isSelected {
+                                        selectedFilterMoods.removeAll { $0.id == mood.id }
+                                    } else {
+                                        selectedFilterMoods.append(mood)
+                                    }
+                                }
+                            } label: {
+                                HStack(spacing: 5) {
+                                    Text(mood.emoji)
+                                        .font(.system(size: 12))
+                                    Text(mood.name)
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundColor(isSelected ? theme.fg1 : theme.fg3)
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(
+                                    Capsule().fill(isSelected ? mood.color.opacity(0.15) : theme.surfaceSunken)
+                                        .overlay(
+                                            Capsule().stroke(
+                                                isSelected ? mood.color.opacity(0.3) : theme.border1,
                                                 lineWidth: 1
                                             )
                                         )
@@ -334,13 +405,23 @@ struct BrowseView: View {
             }
         }
 
-        // Filter by search text (captions, places, and tag names)
+        // Filter by selected moods (entry must have ALL selected moods)
+        if !selectedFilterMoods.isEmpty {
+            let moodIDs = Set(selectedFilterMoods.map(\.id))
+            result = result.filter { entry in
+                let entryMoodIDs = Set(entry.moods.map(\.id))
+                return moodIDs.isSubset(of: entryMoodIDs)
+            }
+        }
+
+        // Filter by search text (captions, places, tag and mood names)
         if !searchText.isEmpty {
             let query = searchText.lowercased()
             result = result.filter { entry in
                 entry.caption.lowercased().contains(query) ||
                 entry.place.lowercased().contains(query) ||
-                entry.tags.contains { $0.name.lowercased().contains(query) }
+                entry.tags.contains { $0.name.lowercased().contains(query) } ||
+                entry.moods.contains { $0.name.lowercased().contains(query) }
             }
         }
 
@@ -453,6 +534,32 @@ private struct EntryCardView: View {
                             }
                             if entry.tags.count > 3 {
                                 Text("+\(entry.tags.count - 3)")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(theme.fg3)
+                            }
+                        }
+                        .padding(.top, 2)
+                    }
+
+                    // Moods
+                    if !entry.moods.isEmpty {
+                        HStack(spacing: 4) {
+                            ForEach(entry.moods.prefix(3)) { mood in
+                                HStack(spacing: 3) {
+                                    Text(mood.emoji)
+                                        .font(.system(size: 11))
+                                    Text(mood.name)
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundColor(theme.fg2)
+                                }
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 3)
+                                .background(
+                                    Capsule().fill(mood.color.opacity(0.12))
+                                )
+                            }
+                            if entry.moods.count > 3 {
+                                Text("+\(entry.moods.count - 3)")
                                     .font(.system(size: 10))
                                     .foregroundColor(theme.fg3)
                             }

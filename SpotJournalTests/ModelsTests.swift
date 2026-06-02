@@ -171,7 +171,7 @@ struct ModelsTests {
     @MainActor
     private func makeTestState() throws -> AppState {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: JournalEntry.self, Tag.self, configurations: config)
+        let container = try ModelContainer(for: JournalEntry.self, Tag.self, Mood.self, configurations: config)
         let state = AppState()
         state.modelContext = ModelContext(container)
         return state
@@ -215,5 +215,102 @@ struct ModelsTests {
         #expect(state.allTags.first?.name == "Food")
         #expect(entry.tags.count == 1)
         #expect(entry.tags.first?.name == "Food")
+    }
+
+    // MARK: - Mood
+
+    @Test func moodInit() {
+        let mood = Mood(name: "Happy", emoji: "\u{1F60A}", colorHex: 0xE08A6C)
+        #expect(mood.name == "Happy")
+        #expect(mood.emoji == "\u{1F60A}")
+        #expect(mood.colorHex == 0xE08A6C)
+        #expect(!mood.id.isEmpty)
+    }
+
+    @Test func moodDefaultSeedsCoverAllCases() {
+        let names = Mood.defaultSeeds.map(\.name)
+        #expect(names.contains("Happy"))
+        #expect(names.contains("Sad"))
+        #expect(names.contains("Grumpy"))
+        #expect(names.contains("Lessons to Learn"))
+        for seed in Mood.defaultSeeds {
+            #expect(!seed.emoji.isEmpty)
+            #expect(seed.colorHex != 0)
+        }
+    }
+
+    @Test func moodDefaultEmojisNonEmpty() {
+        #expect(Mood.defaultEmojis.count >= 8)
+        for emoji in Mood.defaultEmojis {
+            #expect(!emoji.isEmpty)
+        }
+    }
+
+    @Test @MainActor func createMoodPersists() throws {
+        let state = try makeTestState()
+        let mood = state.createMood(name: "Curious", emoji: "\u{1F914}", colorHex: 0x5A7EB5)
+        #expect(state.allMoods.count == 1)
+        #expect(state.allMoods.first?.id == mood.id)
+    }
+
+    @Test @MainActor func renameMoodUpdatesName() throws {
+        let state = try makeTestState()
+        let mood = state.createMood(name: "Happy", emoji: "\u{1F60A}", colorHex: 0xE08A6C)
+        state.renameMood(mood, to: "Joyful")
+        #expect(mood.name == "Joyful")
+    }
+
+    @Test @MainActor func renameMoodIgnoresEmptyName() throws {
+        let state = try makeTestState()
+        let mood = state.createMood(name: "Happy", emoji: "\u{1F60A}", colorHex: 0xE08A6C)
+        state.renameMood(mood, to: "   ")
+        #expect(mood.name == "Happy")
+    }
+
+    @Test @MainActor func updateMoodEmojiChanges() throws {
+        let state = try makeTestState()
+        let mood = state.createMood(name: "Sad", emoji: "\u{1F622}", colorHex: 0x5A7EB5)
+        state.updateMoodEmoji(mood, to: "\u{1F62D}")
+        #expect(mood.emoji == "\u{1F62D}")
+    }
+
+    @Test @MainActor func deleteMoodRemovesFromStore() throws {
+        let state = try makeTestState()
+        let mood = state.createMood(name: "Tired", emoji: "\u{1F634}", colorHex: 0x9B6B9E)
+        #expect(state.allMoods.count == 1)
+        state.deleteMood(mood)
+        #expect(state.allMoods.count == 0)
+    }
+
+    @Test @MainActor func deleteMoodRemovesFromEntries() throws {
+        let state = try makeTestState()
+        let mood = state.createMood(name: "Excited", emoji: "\u{1F389}", colorHex: 0xB07A4F)
+        let entry = JournalEntry(id: "dm-1", photoKey: .coffee,
+                                 caption: "Test", date: Date(), place: "")
+        entry.moods = [mood]
+        state.modelContext?.insert(entry)
+        try state.modelContext?.save()
+
+        #expect(entry.moods.count == 1)
+        state.deleteMood(mood)
+        #expect(entry.moods.count == 0)
+        #expect(state.allMoods.count == 0)
+    }
+
+    @Test @MainActor func deleteMoodLeavesOtherMoodsIntact() throws {
+        let state = try makeTestState()
+        let mood1 = state.createMood(name: "Happy", emoji: "\u{1F60A}", colorHex: 0xE08A6C)
+        let mood2 = state.createMood(name: "Calm", emoji: "\u{1F9D8}", colorHex: 0x6B9B8A)
+        let entry = JournalEntry(id: "dm-2", photoKey: .trail,
+                                 caption: "Test", date: Date(), place: "")
+        entry.moods = [mood1, mood2]
+        state.modelContext?.insert(entry)
+        try state.modelContext?.save()
+
+        state.deleteMood(mood1)
+        #expect(state.allMoods.count == 1)
+        #expect(state.allMoods.first?.name == "Calm")
+        #expect(entry.moods.count == 1)
+        #expect(entry.moods.first?.name == "Calm")
     }
 }

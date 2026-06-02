@@ -76,6 +76,45 @@ final class Tag {
     ]
 }
 
+// MARK: - Mood (SwiftData)
+
+@Model
+final class Mood {
+    @Attribute(.unique) var id: String
+    var name: String
+    var emoji: String
+    var colorHex: UInt = 0xD97757
+
+    @Relationship(inverse: \JournalEntry.moods)
+    var entries: [JournalEntry] = []
+
+    init(name: String, emoji: String, colorHex: UInt = 0xD97757) {
+        self.id = UUID().uuidString
+        self.name = name
+        self.emoji = emoji
+        self.colorHex = colorHex
+    }
+
+    var color: Color { Color(hex: colorHex) }
+
+    static let defaultEmojis: [String] = [
+        "\u{1F60A}", "\u{1F622}", "\u{1F624}", "\u{1F4DA}",
+        "\u{1F9D8}", "\u{1F389}", "\u{1F634}", "\u{1F64F}",
+        "\u{1F60D}", "\u{1F914}", "\u{1F62E}", "\u{1F525}"
+    ]
+
+    static let defaultSeeds: [(name: String, emoji: String, colorHex: UInt)] = [
+        ("Happy",            "\u{1F60A}", 0xE08A6C),
+        ("Sad",              "\u{1F622}", 0x5A7EB5),
+        ("Grumpy",           "\u{1F624}", 0xD97757),
+        ("Lessons to Learn", "\u{1F4DA}", 0xC4A35A),
+        ("Calm",             "\u{1F9D8}", 0x6B9B8A),
+        ("Excited",          "\u{1F389}", 0xB07A4F),
+        ("Tired",            "\u{1F634}", 0x9B6B9E),
+        ("Grateful",         "\u{1F64F}", 0x5B8C5A)
+    ]
+}
+
 // MARK: - Journal Entry (SwiftData)
 
 @Model
@@ -88,6 +127,7 @@ final class JournalEntry {
     var place: String
     var importedAt: Date?
     var tags: [Tag] = []
+    var moods: [Mood] = []
 
     var photoKey: PhotoKey? {
         guard let raw = photoKeyRaw else { return nil }

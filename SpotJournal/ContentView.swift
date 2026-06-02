@@ -148,6 +148,8 @@ struct EditEntrySheet: View {
     @State private var listMode = false
     @State private var selectedTags: [Tag] = []
     @State private var showingTagSheet = false
+    @State private var selectedMoods: [Mood] = []
+    @State private var showingMoodSheet = false
 
     var body: some View {
         let theme = state.theme
@@ -273,6 +275,60 @@ struct EditEntrySheet: View {
                         }
                     }
 
+                    // Moods
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("MOODS")
+                            .font(.system(size: 10, weight: .medium))
+                            .tracking(1)
+                            .foregroundColor(theme.fg3)
+
+                        FlowLayout(spacing: 8) {
+                            ForEach(selectedMoods) { mood in
+                                HStack(spacing: 4) {
+                                    Text(mood.emoji)
+                                        .font(.system(size: 14))
+                                    Text(mood.name)
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundColor(theme.fg1)
+                                    Button {
+                                        selectedMoods.removeAll { $0.id == mood.id }
+                                    } label: {
+                                        Image(systemName: "xmark")
+                                            .font(.system(size: 8, weight: .bold))
+                                            .foregroundColor(theme.fg3)
+                                            .frame(width: 22, height: 22)
+                                            .contentShape(Rectangle())
+                                    }
+                                }
+                                .padding(.leading, 10)
+                                .padding(.trailing, 4)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule().fill(mood.color.opacity(0.15))
+                                        .overlay(Capsule().stroke(mood.color.opacity(0.3), lineWidth: 1))
+                                )
+                            }
+
+                            Button {
+                                showingMoodSheet = true
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "face.smiling")
+                                        .font(.system(size: 11, weight: .semibold))
+                                    Text("Mood")
+                                        .font(.system(size: 13, weight: .medium))
+                                }
+                                .foregroundColor(theme.fg2)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(
+                                    Capsule().fill(theme.surfaceSunken)
+                                        .overlay(Capsule().stroke(theme.border1, lineWidth: 1))
+                                )
+                            }
+                        }
+                    }
+
                     // Date & location (read-only display)
                     VStack(alignment: .leading, spacing: 4) {
                         Text("DATE & LOCATION")
@@ -313,10 +369,15 @@ struct EditEntrySheet: View {
                 TagPickerSheet(selectedTags: $selectedTags)
                     .environment(state)
             }
+            .sheet(isPresented: $showingMoodSheet) {
+                MoodPickerSheet(selectedMoods: $selectedMoods)
+                    .environment(state)
+            }
         }
         .onAppear {
             caption = entry.caption == "\u{2014}" ? "" : entry.caption
             selectedTags = entry.tags
+            selectedMoods = entry.moods
             listMode = caption.contains("\n- ")
         }
     }
@@ -331,6 +392,7 @@ struct EditEntrySheet: View {
         let trimmed = caption.trimmingCharacters(in: .whitespacesAndNewlines)
         entry.caption = trimmed.isEmpty ? "\u{2014}" : trimmed
         entry.tags = selectedTags
+        entry.moods = selectedMoods
         try? state.modelContext?.save()
     }
 }
