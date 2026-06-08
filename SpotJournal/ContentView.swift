@@ -111,7 +111,7 @@ struct EntryDetailView: View {
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
-            .ignoresSafeArea(edges: .bottom)
+            .ignoresSafeArea()
 
             HStack {
                 IconChipButton(systemName: "chevron.left", theme: theme) {

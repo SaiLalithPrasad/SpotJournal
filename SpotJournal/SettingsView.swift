@@ -144,6 +144,59 @@ struct SettingsSheet: View {
                                     )
                                 }
                                 .buttonStyle(.plain)
+                                
+                                // OLED Dark Mode toggle (only visible when dark mode is on)
+                                if state.isDark {
+                                    Button {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        state.useOLED.toggle()
+                                    } label: {
+                                        HStack {
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text("OLED Dark Mode")
+                                                    .font(.system(size: 14, weight: .semibold))
+                                                    .foregroundColor(theme.fg1)
+                                                Text(state.useOLED ? "True black • Battery saving" : "Enhanced dark mode")
+                                                    .font(.system(size: 13))
+                                                    .foregroundColor(theme.fg3)
+                                            }
+
+                                            Spacer()
+
+                                            // Toggle
+                                            ZStack(alignment: state.useOLED ? .trailing : .leading) {
+                                                Capsule()
+                                                    .fill(state.useOLED ? theme.accent : theme.border2)
+                                                    .frame(width: 44, height: 26)
+
+                                                Circle()
+                                                    .fill(.white)
+                                                    .frame(width: 20, height: 20)
+                                                    .shadow(color: .black.opacity(0.2), radius: 1.5, y: 1)
+                                                    .padding(3)
+                                            }
+                                            .animation(.easeInOut(duration: 0.18), value: state.useOLED)
+                                        }
+                                        .padding(14)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .fill(theme.surface)
+                                                .overlay(
+                                                    RoundedRectangle(cornerRadius: 12)
+                                                        .stroke(theme.border1, lineWidth: 1)
+                                                )
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
+                                    .transition(.opacity.combined(with: .move(edge: .top)))
+                                }
+                                
+                                if state.isDark && state.useOLED {
+                                    Text("OLED mode uses true black (#000000) for maximum contrast and battery savings on OLED displays.")
+                                        .font(.system(size: 13))
+                                        .foregroundColor(theme.fg3)
+                                        .transition(.opacity)
+                                }
                             }
 
                             // Export & Import

@@ -284,116 +284,172 @@ struct TagPickerSheet: View {
     @State private var selectedColorIndex = 0
     @State private var editingTag: Tag?
     @State private var editingTagName = ""
+    @State private var showingCreateSection = false
 
     var body: some View {
         let theme = state.theme
+        let existing = state.allTags
 
         NavigationStack {
-            List {
-                // Create new tag
-                Section("Create Tag") {
-                    TextField("Tag name", text: $newTagName)
-                        .font(.system(size: 15))
-
-                    // Color picker
-                    HStack(spacing: 0) {
-                        ForEach(0..<Tag.defaultColors.count, id: \.self) { i in
-                            Button {
-                                selectedColorIndex = i
-                            } label: {
-                                ZStack {
-                                    Circle()
-                                        .fill(Color(hex: Tag.defaultColors[i]))
-                                        .frame(width: 28, height: 28)
-
-                                    if selectedColorIndex == i {
-                                        Circle()
-                                            .stroke(theme.fg1, lineWidth: 2.5)
-                                            .frame(width: 34, height: 34)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Header
+                    Text("Select tags")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(theme.fg1)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
+                    
+                    // Existing tags as pills
+                    if !existing.isEmpty {
+                        FlowLayout(spacing: 10) {
+                            ForEach(existing) { tag in
+                                let isSelected = selectedTags.contains { $0.id == tag.id }
+                                TagPillButton(
+                                    tag: tag,
+                                    isSelected: isSelected,
+                                    theme: theme,
+                                    onTap: {
+                                        UISelectionFeedbackGenerator().selectionChanged()
+                                        if isSelected {
+                                            selectedTags.removeAll { $0.id == tag.id }
+                                        } else {
+                                            selectedTags.append(tag)
+                                        }
+                                    },
+                                    onEdit: {
+                                        editingTagName = tag.name
+                                        editingTag = tag
+                                    },
+                                    onDelete: {
+                                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                        selectedTags.removeAll { $0.id == tag.id }
+                                        state.deleteTag(tag)
                                     }
-                                }
-                                .frame(width: 44, height: 44)
-                                .contentShape(Rectangle())
+                                )
                             }
-                            .buttonStyle(.plain)
                         }
+                        .padding(.horizontal, 20)
+                    } else {
+                        Text("No tags yet. Create one below!")
+                            .font(.system(size: 14))
+                            .foregroundColor(theme.fg3)
+                            .padding(.horizontal, 20)
                     }
-
-                    if !newTagName.trimmingCharacters(in: .whitespaces).isEmpty {
+                    
+                    // Create new tag section
+                    VStack(alignment: .leading, spacing: 12) {
                         Button {
-                            UINotificationFeedbackGenerator().notificationOccurred(.success)
-                            let tag = state.createTag(
-                                name: newTagName.trimmingCharacters(in: .whitespaces),
-                                colorHex: Tag.defaultColors[selectedColorIndex]
-                            )
-                            selectedTags.append(tag)
-                            newTagName = ""
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                showingCreateSection.toggle()
+                            }
                         } label: {
-                            HStack {
-                                Image(systemName: "plus.circle.fill")
-                                Text("Create \"\(newTagName.trimmingCharacters(in: .whitespaces))\"")
+                            HStack(spacing: 6) {
+                                Image(systemName: showingCreateSection ? "minus.circle.fill" : "plus.circle.fill")
+                                    .font(.system(size: 16, weight: .medium))
+                                Text(showingCreateSection ? "Cancel" : "Create New Tag")
+                                    .font(.system(size: 15, weight: .semibold))
                             }
                             .foregroundColor(theme.accent)
+                            .padding(.vertical, 8)
                         }
-                    }
-                }
-
-                // Existing tags
-                let existing = state.allTags
-                if !existing.isEmpty {
-                    Section("Existing Tags") {
-                        ForEach(existing) { tag in
-                            let isSelected = selectedTags.contains { $0.id == tag.id }
-                            Button {
-                                UISelectionFeedbackGenerator().selectionChanged()
-                                if isSelected {
-                                    selectedTags.removeAll { $0.id == tag.id }
-                                } else {
-                                    selectedTags.append(tag)
+                        
+                        if showingCreateSection {
+                            VStack(alignment: .leading, spacing: 12) {
+                                TextField("Tag name", text: $newTagName)
+                                    .font(.system(size: 15))
+                                    .padding(12)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(theme.surface)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 8)
+                                                    .stroke(theme.border2, lineWidth: 1)
+                                            )
+                                    )
+                                
+                                Text("Choose color")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(theme.fg3)
+                                
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 12) {
+                                        ForEach(0..<Tag.defaultColors.count, id: \.self) { i in
+                                            Button {
+                                                selectedColorIndex = i
+                                            } label: {
+                                                ZStack {
+                                                    Circle()
+                                                        .fill(Color(hex: Tag.defaultColors[i]))
+                                                        .frame(width: 32, height: 32)
+                                                    
+                                                    if selectedColorIndex == i {
+                                                        Circle()
+                                                            .stroke(theme.fg1, lineWidth: 2.5)
+                                                            .frame(width: 38, height: 38)
+                                                    }
+                                                }
+                                                .frame(width: 44, height: 44)
+                                                .contentShape(Rectangle())
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+                                    .padding(.horizontal, 2)
                                 }
-                            } label: {
-                                HStack(spacing: 10) {
-                                    Circle()
-                                        .fill(tag.color)
-                                        .frame(width: 12, height: 12)
-                                    Text(tag.name)
-                                        .font(.system(size: 15))
-                                        .foregroundColor(theme.fg1)
-                                    Spacer()
-                                    if isSelected {
-                                        Image(systemName: "checkmark")
-                                            .font(.system(size: 14, weight: .semibold))
-                                            .foregroundColor(theme.accent)
+                                
+                                if !newTagName.trimmingCharacters(in: .whitespaces).isEmpty {
+                                    Button {
+                                        UINotificationFeedbackGenerator().notificationOccurred(.success)
+                                        let tag = state.createTag(
+                                            name: newTagName.trimmingCharacters(in: .whitespaces),
+                                            colorHex: Tag.defaultColors[selectedColorIndex]
+                                        )
+                                        selectedTags.append(tag)
+                                        newTagName = ""
+                                        withAnimation(.easeOut(duration: 0.2)) {
+                                            showingCreateSection = false
+                                        }
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: "checkmark.circle.fill")
+                                            Text("Create Tag")
+                                        }
+                                        .font(.system(size: 15, weight: .semibold))
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 12)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .fill(theme.accent)
+                                        )
                                     }
                                 }
                             }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                    selectedTags.removeAll { $0.id == tag.id }
-                                    state.deleteTag(tag)
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
-                            .swipeActions(edge: .leading) {
-                                Button {
-                                    editingTagName = tag.name
-                                    editingTag = tag
-                                } label: {
-                                    Label("Rename", systemImage: "pencil")
-                                }
-                                .tint(.orange)
-                            }
+                            .padding(16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(theme.surface)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(theme.border1, lineWidth: 1)
+                                    )
+                            )
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                         }
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+                    .padding(.bottom, 32)
                 }
             }
+            .background(theme.bg)
             .navigationTitle("Tags")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
+                        .fontWeight(.semibold)
                 }
             }
         }
@@ -415,6 +471,59 @@ struct TagPickerSheet: View {
             }
         } message: {
             Text("Enter a new name for this tag.")
+        }
+    }
+}
+
+// MARK: - Tag Pill Button
+
+private struct TagPillButton: View {
+    let tag: Tag
+    let isSelected: Bool
+    let theme: JournalTheme
+    let onTap: () -> Void
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+    
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(tag.color)
+                    .frame(width: 10, height: 10)
+                Text(tag.name)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(isSelected ? theme.fg1 : theme.fg2)
+                
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 16))
+                        .foregroundColor(theme.accent)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(
+                Capsule()
+                    .fill(isSelected ? tag.color.opacity(0.2) : theme.surface)
+                    .overlay(
+                        Capsule()
+                            .stroke(isSelected ? tag.color : theme.border1, lineWidth: isSelected ? 2 : 1)
+                    )
+            )
+        }
+        .contextMenu {
+            Button {
+                onEdit()
+            } label: {
+                Label("Rename", systemImage: "pencil")
+            }
+            
+            Button(role: .destructive) {
+                onDelete()
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
         }
     }
 }
@@ -482,164 +591,229 @@ struct MoodPickerSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedMoods: [Mood]
     @State private var newMoodName = ""
-    @State private var newMoodEmoji = "\u{1F60A}"
+    @State private var newMoodEmoji = "😊"
     @State private var newMoodColorIndex = 0
     @State private var editingMood: Mood?
     @State private var editingMoodName = ""
     @State private var editingMoodEmoji = ""
+    @State private var showingCreateSection = false
 
     var body: some View {
         let theme = state.theme
+        let existing = state.allMoods
 
         NavigationStack {
-            List {
-                // Create new mood
-                Section("Create Mood") {
-                    TextField("Mood name", text: $newMoodName)
-                        .font(.system(size: 15))
-
-                    // Emoji palette
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 6), spacing: 6) {
-                        ForEach(Mood.defaultEmojis, id: \.self) { emoji in
-                            Button {
-                                newMoodEmoji = emoji
-                            } label: {
-                                Text(emoji)
-                                    .font(.system(size: 22))
-                                    .frame(width: 38, height: 38)
-                                    .background(
-                                        Circle()
-                                            .fill(newMoodEmoji == emoji ? theme.accentSoft : Color.clear)
-                                            .overlay(
-                                                Circle().stroke(
-                                                    newMoodEmoji == emoji ? theme.accent : Color.clear,
-                                                    lineWidth: 2
-                                                )
-                                            )
-                                    )
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-
-                    HStack(spacing: 8) {
-                        Text("Custom:")
-                            .font(.system(size: 13))
-                            .foregroundColor(theme.fg3)
-                        TextField("\u{1F600}", text: $newMoodEmoji)
-                            .font(.system(size: 18))
-                            .frame(width: 44)
-                            .multilineTextAlignment(.center)
-                    }
-
-                    // Color picker
-                    HStack(spacing: 0) {
-                        ForEach(0..<Tag.defaultColors.count, id: \.self) { i in
-                            Button {
-                                newMoodColorIndex = i
-                            } label: {
-                                ZStack {
-                                    Circle()
-                                        .fill(Color(hex: Tag.defaultColors[i]))
-                                        .frame(width: 28, height: 28)
-
-                                    if newMoodColorIndex == i {
-                                        Circle()
-                                            .stroke(theme.fg1, lineWidth: 2.5)
-                                            .frame(width: 34, height: 34)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Header
+                    Text("Select moods")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(theme.fg1)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
+                    
+                    // Existing moods as pills
+                    if !existing.isEmpty {
+                        FlowLayout(spacing: 10) {
+                            ForEach(existing) { mood in
+                                let isSelected = selectedMoods.contains { $0.id == mood.id }
+                                MoodPillButton(
+                                    mood: mood,
+                                    isSelected: isSelected,
+                                    theme: theme,
+                                    onTap: {
+                                        UISelectionFeedbackGenerator().selectionChanged()
+                                        if isSelected {
+                                            selectedMoods.removeAll { $0.id == mood.id }
+                                        } else {
+                                            selectedMoods.append(mood)
+                                        }
+                                    },
+                                    onEdit: {
+                                        editingMoodName = mood.name
+                                        editingMoodEmoji = mood.emoji
+                                        editingMood = mood
+                                    },
+                                    onDelete: {
+                                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                        selectedMoods.removeAll { $0.id == mood.id }
+                                        state.deleteMood(mood)
                                     }
-                                }
-                                .frame(width: 44, height: 44)
-                                .contentShape(Rectangle())
+                                )
                             }
-                            .buttonStyle(.plain)
                         }
+                        .padding(.horizontal, 20)
+                    } else {
+                        Text("No moods yet. Create one below!")
+                            .font(.system(size: 14))
+                            .foregroundColor(theme.fg3)
+                            .padding(.horizontal, 20)
                     }
-
-                    if !newMoodName.trimmingCharacters(in: .whitespaces).isEmpty
-                        && !newMoodEmoji.trimmingCharacters(in: .whitespaces).isEmpty {
+                    
+                    // Create new mood section
+                    VStack(alignment: .leading, spacing: 12) {
                         Button {
-                            UINotificationFeedbackGenerator().notificationOccurred(.success)
-                            let mood = state.createMood(
-                                name: newMoodName.trimmingCharacters(in: .whitespaces),
-                                emoji: newMoodEmoji.trimmingCharacters(in: .whitespaces),
-                                colorHex: Tag.defaultColors[newMoodColorIndex]
-                            )
-                            selectedMoods.append(mood)
-                            newMoodName = ""
-                            newMoodEmoji = "\u{1F60A}"
-                            newMoodColorIndex = 0
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                showingCreateSection.toggle()
+                            }
                         } label: {
-                            HStack {
-                                Image(systemName: "plus.circle.fill")
-                                Text("Create \(newMoodEmoji) \"\(newMoodName.trimmingCharacters(in: .whitespaces))\"")
+                            HStack(spacing: 6) {
+                                Image(systemName: showingCreateSection ? "minus.circle.fill" : "plus.circle.fill")
+                                    .font(.system(size: 16, weight: .medium))
+                                Text(showingCreateSection ? "Cancel" : "Create New Mood")
+                                    .font(.system(size: 15, weight: .semibold))
                             }
                             .foregroundColor(theme.accent)
+                            .padding(.vertical, 8)
+                        }
+                        
+                        if showingCreateSection {
+                            VStack(alignment: .leading, spacing: 12) {
+                                TextField("Mood name", text: $newMoodName)
+                                    .font(.system(size: 15))
+                                    .padding(12)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(theme.surface)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 8)
+                                                    .stroke(theme.border2, lineWidth: 1)
+                                            )
+                                    )
+                                
+                                Text("Choose emoji")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(theme.fg3)
+                                
+                                // Emoji palette
+                                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 6), spacing: 8) {
+                                    ForEach(Mood.defaultEmojis, id: \.self) { emoji in
+                                        Button {
+                                            newMoodEmoji = emoji
+                                        } label: {
+                                            Text(emoji)
+                                                .font(.system(size: 24))
+                                                .frame(width: 44, height: 44)
+                                                .background(
+                                                    Circle()
+                                                        .fill(newMoodEmoji == emoji ? theme.accentSoft : Color.clear)
+                                                        .overlay(
+                                                            Circle().stroke(
+                                                                newMoodEmoji == emoji ? theme.accent : theme.border1,
+                                                                lineWidth: newMoodEmoji == emoji ? 2 : 1
+                                                            )
+                                                        )
+                                                )
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                                
+                                HStack(spacing: 8) {
+                                    Text("Or type custom:")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(theme.fg3)
+                                    TextField("😀", text: $newMoodEmoji)
+                                        .font(.system(size: 20))
+                                        .frame(width: 50)
+                                        .multilineTextAlignment(.center)
+                                        .padding(6)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 6)
+                                                .fill(theme.surface)
+                                                .overlay(
+                                                    RoundedRectangle(cornerRadius: 6)
+                                                        .stroke(theme.border1, lineWidth: 1)
+                                                )
+                                        )
+                                }
+                                
+                                Text("Choose color")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(theme.fg3)
+                                
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 12) {
+                                        ForEach(0..<Tag.defaultColors.count, id: \.self) { i in
+                                            Button {
+                                                newMoodColorIndex = i
+                                            } label: {
+                                                ZStack {
+                                                    Circle()
+                                                        .fill(Color(hex: Tag.defaultColors[i]))
+                                                        .frame(width: 32, height: 32)
+                                                    
+                                                    if newMoodColorIndex == i {
+                                                        Circle()
+                                                            .stroke(theme.fg1, lineWidth: 2.5)
+                                                            .frame(width: 38, height: 38)
+                                                    }
+                                                }
+                                                .frame(width: 44, height: 44)
+                                                .contentShape(Rectangle())
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+                                    .padding(.horizontal, 2)
+                                }
+                                
+                                if !newMoodName.trimmingCharacters(in: .whitespaces).isEmpty
+                                    && !newMoodEmoji.trimmingCharacters(in: .whitespaces).isEmpty {
+                                    Button {
+                                        UINotificationFeedbackGenerator().notificationOccurred(.success)
+                                        let mood = state.createMood(
+                                            name: newMoodName.trimmingCharacters(in: .whitespaces),
+                                            emoji: newMoodEmoji.trimmingCharacters(in: .whitespaces),
+                                            colorHex: Tag.defaultColors[newMoodColorIndex]
+                                        )
+                                        selectedMoods.append(mood)
+                                        newMoodName = ""
+                                        newMoodEmoji = "😊"
+                                        newMoodColorIndex = 0
+                                        withAnimation(.easeOut(duration: 0.2)) {
+                                            showingCreateSection = false
+                                        }
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: "checkmark.circle.fill")
+                                            Text("Create Mood")
+                                        }
+                                        .font(.system(size: 15, weight: .semibold))
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 12)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .fill(theme.accent)
+                                        )
+                                    }
+                                }
+                            }
+                            .padding(16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(theme.surface)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(theme.border1, lineWidth: 1)
+                                    )
+                            )
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                         }
                     }
-                }
-
-                // Existing moods
-                let existing = state.allMoods
-                if !existing.isEmpty {
-                    Section("Existing Moods") {
-                        ForEach(existing) { mood in
-                            let isSelected = selectedMoods.contains { $0.id == mood.id }
-                            Button {
-                                UISelectionFeedbackGenerator().selectionChanged()
-                                if isSelected {
-                                    selectedMoods.removeAll { $0.id == mood.id }
-                                } else {
-                                    selectedMoods.append(mood)
-                                }
-                            } label: {
-                                HStack(spacing: 10) {
-                                    ZStack {
-                                        Circle()
-                                            .fill(mood.color.opacity(0.18))
-                                            .frame(width: 32, height: 32)
-                                        Text(mood.emoji)
-                                            .font(.system(size: 18))
-                                    }
-                                    Text(mood.name)
-                                        .font(.system(size: 15))
-                                        .foregroundColor(theme.fg1)
-                                    Spacer()
-                                    if isSelected {
-                                        Image(systemName: "checkmark")
-                                            .font(.system(size: 14, weight: .semibold))
-                                            .foregroundColor(theme.accent)
-                                    }
-                                }
-                            }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                    selectedMoods.removeAll { $0.id == mood.id }
-                                    state.deleteMood(mood)
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
-                            .swipeActions(edge: .leading) {
-                                Button {
-                                    editingMoodName = mood.name
-                                    editingMoodEmoji = mood.emoji
-                                    editingMood = mood
-                                } label: {
-                                    Label("Edit", systemImage: "pencil")
-                                }
-                                .tint(.orange)
-                            }
-                        }
-                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+                    .padding(.bottom, 32)
                 }
             }
+            .background(theme.bg)
             .navigationTitle("Moods")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
+                        .fontWeight(.semibold)
                 }
             }
         }
@@ -663,6 +837,58 @@ struct MoodPickerSheet: View {
             }
         } message: {
             Text("Update the name and emoji for this mood.")
+        }
+    }
+}
+
+// MARK: - Mood Pill Button
+
+private struct MoodPillButton: View {
+    let mood: Mood
+    let isSelected: Bool
+    let theme: JournalTheme
+    let onTap: () -> Void
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+    
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 6) {
+                Text(mood.emoji)
+                    .font(.system(size: 18))
+                Text(mood.name)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(isSelected ? theme.fg1 : theme.fg2)
+                
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 16))
+                        .foregroundColor(theme.accent)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(
+                Capsule()
+                    .fill(isSelected ? mood.color.opacity(0.2) : theme.surface)
+                    .overlay(
+                        Capsule()
+                            .stroke(isSelected ? mood.color : theme.border1, lineWidth: isSelected ? 2 : 1)
+                    )
+            )
+        }
+        .contextMenu {
+            Button {
+                onEdit()
+            } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+            
+            Button(role: .destructive) {
+                onDelete()
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
         }
     }
 }

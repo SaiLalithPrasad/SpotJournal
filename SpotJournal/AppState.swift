@@ -17,6 +17,9 @@ class AppState {
     var isDark: Bool {
         didSet { UserDefaults.standard.set(isDark, forKey: "isDark") }
     }
+    var useOLED: Bool {
+        didSet { UserDefaults.standard.set(useOLED, forKey: "useOLED") }
+    }
     var captionFont: CaptionFont {
         didSet { UserDefaults.standard.set(captionFont.rawValue, forKey: "captionFont") }
     }
@@ -55,7 +58,7 @@ class AppState {
 
     // MARK: - Computed
 
-    var theme: JournalTheme { JournalTheme(isDark: isDark) }
+    var theme: JournalTheme { JournalTheme(isDark: isDark, useOLED: useOLED) }
     var latest: JournalEntry? {
         _ = refreshTrigger
         guard let context = modelContext else { return nil }
@@ -87,6 +90,7 @@ class AppState {
     init() {
         let defaults = UserDefaults.standard
         self.isDark = defaults.bool(forKey: "isDark")
+        self.useOLED = defaults.bool(forKey: "useOLED")
         self.captionFont = CaptionFont(rawValue: defaults.string(forKey: "captionFont") ?? "") ?? .serif
         self.layout = LayoutStyle(rawValue: defaults.string(forKey: "layout") ?? "") ?? .classic
         self.name = defaults.string(forKey: "name") ?? ""

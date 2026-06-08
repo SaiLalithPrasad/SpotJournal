@@ -44,6 +44,30 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES"
       shouldAutocreateTestPlan = "YES">
+      <Testables>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "1C4733962F981ACA00E7A4FB"
+               BuildableName = "SpotJournalTests.xctest"
+               BlueprintName = "SpotJournalTests"
+               ReferencedContainer = "container:SpotJournal.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "1C166C482FD76EF300F42AAE"
+               BuildableName = "SpotJournalTests1.xctest"
+               BlueprintName = "SpotJournalTests1"
+               ReferencedContainer = "container:SpotJournal.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+      </Testables>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"
