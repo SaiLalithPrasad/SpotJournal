@@ -7,20 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		1C166C422FD76E1700F42AAE /* AllTests.xctestplan in Resources */ = {isa = PBXBuildFile; fileRef = 1C166C412FD76E1700F42AAE /* AllTests.xctestplan */; };
-		1C166C442FD76E8C00F42AAE /* SpotJournalTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C166C432FD76E8C00F42AAE /* SpotJournalTests.swift */; };
+		1C2DD8952FDA14F900E83EC7 /* Testing.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1C2DD8942FDA14F900E83EC7 /* Testing.framework */; platformFilter = ios; };
 		1C4BD7D72F94708500B2131F /* SpotJournalShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1C4BD7CD2F94708500B2131F /* SpotJournalShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		1CCE9C722F9DC3EE00479454 /* ThumbnailCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CCE9C712F9DC3EE00479454 /* ThumbnailCache.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		1C166C4D2FD76EF300F42AAE /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 1CFEA8742F93E0C400EDB8E7 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 1CFEA87B2F93E0C400EDB8E7;
-			remoteInfo = SpotJournal;
-		};
 		1C47339B2F981ACA00E7A4FB /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 1CFEA8742F93E0C400EDB8E7 /* Project object */;
@@ -52,9 +44,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		1C166C412FD76E1700F42AAE /* AllTests.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = AllTests.xctestplan; sourceTree = "<group>"; };
-		1C166C432FD76E8C00F42AAE /* SpotJournalTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotJournalTests.swift; sourceTree = "<group>"; };
-		1C166C492FD76EF300F42AAE /* SpotJournalTests1.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpotJournalTests1.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		1C2DD8942FDA14F900E83EC7 /* Testing.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Testing.framework; path = Platforms/iPhoneOS.platform/Developer/Library/Frameworks/Testing.framework; sourceTree = DEVELOPER_DIR; };
 		1C4733972F981ACA00E7A4FB /* SpotJournalTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpotJournalTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1C4BD7CD2F94708500B2131F /* SpotJournalShare.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SpotJournalShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		1CCE9C712F9DC3EE00479454 /* ThumbnailCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailCache.swift; sourceTree = "<group>"; };
@@ -72,16 +62,6 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		1C166C4A2FD76EF300F42AAE /* SpotJournalTests1 */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = SpotJournalTests1;
-			sourceTree = "<group>";
-		};
-		1C4733982F981ACA00E7A4FB /* SpotJournalTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = SpotJournalTests;
-			sourceTree = "<group>";
-		};
 		1C4BD7CE2F94708500B2131F /* SpotJournalShare */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -98,17 +78,11 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		1C166C462FD76EF300F42AAE /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		1C4733942F981ACA00E7A4FB /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1C2DD8952FDA14F900E83EC7 /* Testing.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -129,17 +103,22 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		1C2DD8932FDA14F900E83EC7 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				1C2DD8942FDA14F900E83EC7 /* Testing.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		1CFEA8732F93E0C400EDB8E7 = {
 			isa = PBXGroup;
 			children = (
-				1C166C412FD76E1700F42AAE /* AllTests.xctestplan */,
 				1CFEA87E2F93E0C400EDB8E7 /* SpotJournal */,
 				1C4BD7CE2F94708500B2131F /* SpotJournalShare */,
-				1C4733982F981ACA00E7A4FB /* SpotJournalTests */,
-				1C166C4A2FD76EF300F42AAE /* SpotJournalTests1 */,
 				1CFEA87D2F93E0C400EDB8E7 /* Products */,
 				1CCE9C712F9DC3EE00479454 /* ThumbnailCache.swift */,
-				1C166C432FD76E8C00F42AAE /* SpotJournalTests.swift */,
+				1C2DD8932FDA14F900E83EC7 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -149,7 +128,6 @@
 				1CFEA87C2F93E0C400EDB8E7 /* SpotJournal.app */,
 				1C4BD7CD2F94708500B2131F /* SpotJournalShare.appex */,
 				1C4733972F981ACA00E7A4FB /* SpotJournalTests.xctest */,
-				1C166C492FD76EF300F42AAE /* SpotJournalTests1.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -157,29 +135,6 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		1C166C482FD76EF300F42AAE /* SpotJournalTests1 */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 1C166C4F2FD76EF300F42AAE /* Build configuration list for PBXNativeTarget "SpotJournalTests1" */;
-			buildPhases = (
-				1C166C452FD76EF300F42AAE /* Sources */,
-				1C166C462FD76EF300F42AAE /* Frameworks */,
-				1C166C472FD76EF300F42AAE /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				1C166C4E2FD76EF300F42AAE /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				1C166C4A2FD76EF300F42AAE /* SpotJournalTests1 */,
-			);
-			name = SpotJournalTests1;
-			packageProductDependencies = (
-			);
-			productName = SpotJournalTests1;
-			productReference = 1C166C492FD76EF300F42AAE /* SpotJournalTests1.xctest */;
-			productType = "com.apple.product-type.bundle.unit-test";
-		};
 		1C4733962F981ACA00E7A4FB /* SpotJournalTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 1C47339F2F981ACA00E7A4FB /* Build configuration list for PBXNativeTarget "SpotJournalTests" */;
@@ -192,9 +147,6 @@
 			);
 			dependencies = (
 				1C47339C2F981ACA00E7A4FB /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				1C4733982F981ACA00E7A4FB /* SpotJournalTests */,
 			);
 			name = SpotJournalTests;
 			packageProductDependencies = (
@@ -259,10 +211,6 @@
 				LastSwiftUpdateCheck = 2650;
 				LastUpgradeCheck = 2640;
 				TargetAttributes = {
-					1C166C482FD76EF300F42AAE = {
-						CreatedOnToolsVersion = 26.5;
-						TestTargetID = 1CFEA87B2F93E0C400EDB8E7;
-					};
 					1C4733962F981ACA00E7A4FB = {
 						CreatedOnToolsVersion = 26.4.1;
 						TestTargetID = 1CFEA87B2F93E0C400EDB8E7;
@@ -292,19 +240,11 @@
 				1CFEA87B2F93E0C400EDB8E7 /* SpotJournal */,
 				1C4BD7CC2F94708500B2131F /* SpotJournalShare */,
 				1C4733962F981ACA00E7A4FB /* SpotJournalTests */,
-				1C166C482FD76EF300F42AAE /* SpotJournalTests1 */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		1C166C472FD76EF300F42AAE /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		1C4733952F981ACA00E7A4FB /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -323,20 +263,12 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1C166C422FD76E1700F42AAE /* AllTests.xctestplan in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		1C166C452FD76EF300F42AAE /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		1C4733932F981ACA00E7A4FB /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -356,18 +288,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				1CCE9C722F9DC3EE00479454 /* ThumbnailCache.swift in Sources */,
-				1C166C442FD76E8C00F42AAE /* SpotJournalTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		1C166C4E2FD76EF300F42AAE /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 1CFEA87B2F93E0C400EDB8E7 /* SpotJournal */;
-			targetProxy = 1C166C4D2FD76EF300F42AAE /* PBXContainerItemProxy */;
-		};
 		1C47339C2F981ACA00E7A4FB /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 1CFEA87B2F93E0C400EDB8E7 /* SpotJournal */;
@@ -381,57 +307,6 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		1C166C502FD76EF300F42AAE /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = Y4XZT4BKSA;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
-				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.stovetop.SpotJournalTests1;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = auto;
-				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SpotJournal.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SpotJournal";
-				XROS_DEPLOYMENT_TARGET = 26.5;
-			};
-			name = Debug;
-		};
-		1C166C512FD76EF300F42AAE /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
-				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.stovetop.SpotJournalTests1;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = auto;
-				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SpotJournal.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SpotJournal";
-				XROS_DEPLOYMENT_TARGET = 26.5;
-			};
-			name = Release;
-		};
 		1C47339D2F981ACA00E7A4FB /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -439,6 +314,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = Y4XZT4BKSA;
+				ENABLE_TESTABILITY = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.stovetop.SpotJournalTests;
@@ -460,6 +336,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = Y4XZT4BKSA;
+				ENABLE_TESTABILITY = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.stovetop.SpotJournalTests;
@@ -726,15 +603,6 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		1C166C4F2FD76EF300F42AAE /* Build configuration list for PBXNativeTarget "SpotJournalTests1" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				1C166C502FD76EF300F42AAE /* Debug */,
-				1C166C512FD76EF300F42AAE /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		1C47339F2F981ACA00E7A4FB /* Build configuration list for PBXNativeTarget "SpotJournalTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
