@@ -55,6 +55,28 @@ struct ManifestEntry: Codable {
     let moods: [ArchiveMood]?
 }
 
+// MARK: - Streaming Archive (v3 — multi-photo)
+
+private let archiveMagicV3 = Data("SPOTJNL3".utf8)
+
+struct ArchiveManifestV3: Codable {
+    let version: Int
+    let exportedAt: Date
+    let entries: [ManifestEntryV3]
+}
+
+struct ManifestEntryV3: Codable {
+    let caption: String
+    let date: Date
+    let place: String
+    let importedAt: Date?
+    /// Number of photos streamed for this entry (0 for placeholder entries).
+    let photoCount: Int
+    let placeholderKey: String?
+    let tags: [ArchiveTag]
+    let moods: [ArchiveMood]?
+}
+
 // MARK: - Exporter
 
 enum EntryExporter {
@@ -113,22 +135,22 @@ enum EntryExporter {
         let total = Double(entries.count)
 
         // Magic bytes
-        try handle.write(contentsOf: archiveMagic)
+        try handle.write(contentsOf: archiveMagicV3)
 
         // Build manifest (lightweight — no photo data)
         let manifestEntries = entries.map { entry in
-            ManifestEntry(
+            ManifestEntryV3(
                 caption: entry.caption,
                 date: entry.date,
                 place: entry.place,
                 importedAt: entry.importedAt,
-                photoFilename: entry.photoFileName,
+                photoCount: entry.resolvedFileNames.count,
                 placeholderKey: entry.photoKeyRaw,
                 tags: entry.tags.map { ArchiveTag(name: $0.name, colorHex: $0.colorHex) },
                 moods: entry.moods.map { ArchiveMood(name: $0.name, emoji: $0.emoji, colorHex: $0.colorHex) }
             )
         }
-        let manifest = ArchiveManifest(version: 2, exportedAt: Date(), entries: manifestEntries)
+        let manifest = ArchiveManifestV3(version: 3, exportedAt: Date(), entries: manifestEntries)
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         let manifestData = try encoder.encode(manifest)
@@ -136,14 +158,18 @@ enum EntryExporter {
         try writeUInt32(UInt32(manifestData.count), to: handle)
         try handle.write(contentsOf: manifestData)
 
-        // Stream photos one at a time
+        // Stream photos: for each entry, a count followed by each photo (length + data).
         for (index, entry) in entries.enumerated() {
-            try autoreleasepool {
-                if let filename = entry.photoFileName, let photoData = PhotoStore.loadData(filename) {
-                    try writeUInt32(UInt32(photoData.count), to: handle)
-                    try handle.write(contentsOf: photoData)
-                } else {
-                    try writeUInt32(0, to: handle)
+            let filenames = entry.resolvedFileNames
+            try writeUInt32(UInt32(filenames.count), to: handle)
+            for filename in filenames {
+                try autoreleasepool {
+                    if let photoData = PhotoStore.loadData(filename) {
+                        try writeUInt32(UInt32(photoData.count), to: handle)
+                        try handle.write(contentsOf: photoData)
+                    } else {
+                        try writeUInt32(0, to: handle)
+                    }
                 }
             }
             progress?(Double(index + 1) / max(total, 1))
@@ -174,6 +200,10 @@ enum EntryExporter {
         let header = try handle.read(upToCount: 8)
         try handle.seek(toOffset: 0)
 
+        if header == archiveMagicV3 {
+            return try importV3(handle: handle, into: context)
+        }
+
         if header == archiveMagic {
             return try importV2(handle: handle, into: context)
         }
@@ -182,6 +212,110 @@ enum EntryExporter {
         try handle.close()
         let data = try Data(contentsOf: url, options: .mappedIfSafe)
         return try importArchive(data, into: context)
+    }
+
+    /// Streaming import for v3 archives (multi-photo). One photo in memory at a time.
+    private static func importV3(handle: FileHandle, into context: ModelContext) throws -> Int {
+        // Skip magic
+        try handle.seek(toOffset: 8)
+
+        // Read manifest
+        let manifestLength = try readUInt32(from: handle)
+        guard let manifestData = try handle.read(upToCount: Int(manifestLength)),
+              manifestData.count == Int(manifestLength) else {
+            throw NSError(domain: "SpotJournal", code: 2, userInfo: [NSLocalizedDescriptionKey: "Invalid archive manifest"])
+        }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let manifest = try decoder.decode(ArchiveManifestV3.self, from: manifestData)
+
+        // Load existing state for deduplication / reuse
+        let existingEntries = (try? context.fetch(FetchDescriptor<JournalEntry>())) ?? []
+        let existingDates = Set(existingEntries.map { $0.date.timeIntervalSince1970 })
+        let existingTags = (try? context.fetch(FetchDescriptor<Tag>())) ?? []
+        var existingMoods = (try? context.fetch(FetchDescriptor<Mood>())) ?? []
+
+        var importedCount = 0
+
+        for manifestEntry in manifest.entries {
+            let isDuplicate = existingDates.contains(manifestEntry.date.timeIntervalSince1970)
+
+            // Read all photos for this entry (even if skipping, to advance the file position).
+            var savedFilenames: [String] = []
+            for _ in 0..<max(0, manifestEntry.photoCount) {
+                let photoLength = try readUInt32(from: handle)
+                let photoData: Data? = photoLength > 0
+                    ? try handle.read(upToCount: Int(photoLength))
+                    : nil
+                if !isDuplicate, let photoData, let filename = try? PhotoStore.save(photoData) {
+                    savedFilenames.append(filename)
+                }
+            }
+
+            if isDuplicate { continue }
+
+            let entry: JournalEntry
+
+            if !savedFilenames.isEmpty {
+                entry = JournalEntry(
+                    id: JournalEntry.generateId(),
+                    photoFileNames: savedFilenames,
+                    caption: manifestEntry.caption,
+                    date: manifestEntry.date,
+                    place: manifestEntry.place,
+                    importedAt: manifestEntry.importedAt
+                )
+            } else if let placeholderKey = manifestEntry.placeholderKey,
+                      let key = PhotoKey(rawValue: placeholderKey) {
+                entry = JournalEntry(
+                    id: JournalEntry.generateId(),
+                    photoKey: key,
+                    caption: manifestEntry.caption,
+                    date: manifestEntry.date,
+                    place: manifestEntry.place
+                )
+                entry.importedAt = manifestEntry.importedAt
+            } else {
+                continue
+            }
+
+            // Resolve tags
+            var entryTags: [Tag] = []
+            for archiveTag in manifestEntry.tags {
+                if let existing = existingTags.first(where: { $0.name == archiveTag.name }) {
+                    entryTags.append(existing)
+                } else {
+                    let newTag = Tag(name: archiveTag.name, colorHex: archiveTag.colorHex)
+                    context.insert(newTag)
+                    entryTags.append(newTag)
+                }
+            }
+            entry.tags = entryTags
+
+            // Resolve moods
+            var entryMoods: [Mood] = []
+            for archiveMood in manifestEntry.moods ?? [] {
+                if let existing = existingMoods.first(where: { $0.name == archiveMood.name }) {
+                    entryMoods.append(existing)
+                } else {
+                    let newMood = Mood(
+                        name: archiveMood.name,
+                        emoji: archiveMood.emoji,
+                        colorHex: archiveMood.colorHex ?? Tag.defaultColors[0]
+                    )
+                    context.insert(newMood)
+                    existingMoods.append(newMood)
+                    entryMoods.append(newMood)
+                }
+            }
+            entry.moods = entryMoods
+
+            context.insert(entry)
+            importedCount += 1
+        }
+
+        try context.save()
+        return importedCount
     }
 
     /// Streaming import for v2 archives. Only one photo in memory at a time.
@@ -559,8 +693,9 @@ enum PDFExporter {
 
         var cursorY = contentRect.minY
 
-        // Draw photo
-        if let image = loadImage(for: entry) {
+        // Draw photos: first one large, remaining ones as a wrapped thumbnail row.
+        let images = loadImages(for: entry)
+        if let image = images.first {
             let aspect = image.size.width / image.size.height
             var drawWidth = contentRect.width
             var drawHeight = drawWidth / aspect
@@ -571,6 +706,9 @@ enum PDFExporter {
             let photoX = contentRect.minX + (contentRect.width - drawWidth) / 2
             image.draw(in: CGRect(x: photoX, y: cursorY, width: drawWidth, height: drawHeight))
             cursorY += drawHeight + Layout.photoCaptionGap
+        }
+        if images.count > 1 {
+            cursorY = drawPhotoThumbnails(Array(images.dropFirst()), startY: cursorY, in: contentRect)
         }
 
         // Build attributed caption
@@ -776,8 +914,12 @@ enum PDFExporter {
 
     // MARK: - Helpers
 
-    private static func loadImage(for entry: JournalEntry) -> UIImage? {
-        switch entry.photoSource {
+    private static func loadImages(for entry: JournalEntry) -> [UIImage] {
+        entry.photoSources.compactMap { loadImage(for: $0) }
+    }
+
+    private static func loadImage(for source: PhotoSource) -> UIImage? {
+        switch source {
         case .placeholder(let key):
             let view = PlaceholderPhoto(photoKey: key).frame(width: 400, height: 400)
             let renderer = ImageRenderer(content: view)
@@ -788,6 +930,32 @@ enum PDFExporter {
         case .data(let data):
             return UIImage(data: data)
         }
+    }
+
+    /// Draws additional photos as a left-aligned, wrapping row of thumbnails.
+    /// Returns the Y position below the thumbnails (including trailing gap).
+    private static func drawPhotoThumbnails(
+        _ images: [UIImage],
+        startY: CGFloat,
+        in contentRect: CGRect
+    ) -> CGFloat {
+        let thumbHeight: CGFloat = 58
+        let spacing: CGFloat = 8
+        var x = contentRect.minX
+        var y = startY
+
+        for image in images {
+            let aspect = image.size.width / max(image.size.height, 1)
+            let w = thumbHeight * aspect
+            if x > contentRect.minX && x + w > contentRect.maxX {
+                x = contentRect.minX
+                y += thumbHeight + spacing
+            }
+            image.draw(in: CGRect(x: x, y: y, width: w, height: thumbHeight))
+            x += w + spacing
+        }
+
+        return y + thumbHeight + Layout.photoCaptionGap
     }
 
     private static func uiFont(for style: CaptionFont, size: CGFloat) -> UIFont {

@@ -7,6 +7,7 @@ struct JournalPageView: View {
     let theme: JournalTheme
 
     @State private var showingPhotoZoom = false
+    @State private var zoomStartIndex = 0
 
     var body: some View {
         ZStack {
@@ -17,8 +18,18 @@ struct JournalPageView: View {
             }
         }
         .fullScreenCover(isPresented: $showingPhotoZoom) {
-            ZoomablePhotoViewer(photoSource: entry.photoSource, isPresented: $showingPhotoZoom)
+            ZoomablePhotoViewer(
+                photoSources: entry.photoSources,
+                startIndex: zoomStartIndex,
+                isPresented: $showingPhotoZoom
+            )
         }
+    }
+
+    private func openZoom(at index: Int) {
+        guard isZoomable else { return }
+        zoomStartIndex = index
+        showingPhotoZoom = true
     }
 
     private var isZoomable: Bool {
@@ -75,12 +86,12 @@ struct JournalPageView: View {
             VStack(spacing: 0) {
                 Spacer().frame(height: 44)
 
-                PhotoPasteView(
-                    photoSource: entry.photoSource,
+                PhotoDeckView(
+                    photoSources: entry.photoSources,
                     width: 248, height: 290, rotation: -1.4,
-                    showTape: true, isDark: theme.isDark
+                    showTape: true, theme: theme,
+                    onTap: openZoom
                 )
-                .onTapGesture { if isZoomable { showingPhotoZoom = true } }
                 .padding(.bottom, 28)
 
                 CaptionContentView(
@@ -116,12 +127,12 @@ struct JournalPageView: View {
             VStack(alignment: .leading, spacing: 0) {
                 Spacer().frame(height: 44)
 
-                PhotoPasteView(
-                    photoSource: entry.photoSource,
+                PhotoDeckView(
+                    photoSources: entry.photoSources,
                     width: 210, height: 250, rotation: -3.2,
-                    showTape: true, isDark: theme.isDark
+                    showTape: true, theme: theme,
+                    onTap: openZoom
                 )
-                .onTapGesture { if isZoomable { showingPhotoZoom = true } }
                 .padding(.leading, -6)
                 .padding(.bottom, 28)
 
@@ -156,12 +167,12 @@ struct JournalPageView: View {
             VStack(spacing: 0) {
                 Spacer().frame(height: 44)
 
-                PhotoPasteView(
-                    photoSource: entry.photoSource,
+                PhotoDeckView(
+                    photoSources: entry.photoSources,
                     width: 296, height: 300, rotation: 0.5,
-                    showTape: false, isDark: theme.isDark
+                    showTape: false, theme: theme,
+                    onTap: openZoom
                 )
-                .onTapGesture { if isZoomable { showingPhotoZoom = true } }
                 .padding(.bottom, 24)
 
                 // Hairline rule

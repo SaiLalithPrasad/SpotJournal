@@ -47,6 +47,69 @@ struct PhotoPasteView: View {
     }
 }
 
+// MARK: - Photo Deck (single photo or swipeable carousel)
+
+/// Renders a single taped photo, or — when an entry has multiple photos — a
+/// horizontally swipeable carousel constrained to the photo frame, with page
+/// dots and an "N/M" badge. Tapping a photo reports its index via `onTap`.
+struct PhotoDeckView: View {
+    let photoSources: [PhotoSource]
+    var width: CGFloat = 248
+    var height: CGFloat = 290
+    var rotation: Double = -1.4
+    var showTape: Bool = true
+    let theme: JournalTheme
+    var onTap: (Int) -> Void = { _ in }
+
+    @State private var index = 0
+
+    var body: some View {
+        if photoSources.count <= 1 {
+            PhotoPasteView(
+                photoSource: photoSources.first ?? .placeholder(.window),
+                width: width, height: height, rotation: rotation,
+                showTape: showTape, isDark: theme.isDark
+            )
+            .onTapGesture { onTap(0) }
+        } else {
+            VStack(spacing: 12) {
+                ZStack(alignment: .topTrailing) {
+                    TabView(selection: $index) {
+                        ForEach(Array(photoSources.enumerated()), id: \.offset) { i, source in
+                            PhotoPasteView(
+                                photoSource: source,
+                                width: width, height: height, rotation: rotation,
+                                showTape: showTape, isDark: theme.isDark
+                            )
+                            .onTapGesture { onTap(i) }
+                            .tag(i)
+                        }
+                    }
+                    .tabViewStyle(.page(indexDisplayMode: .never))
+                    .frame(width: width + 28, height: height + 52)
+
+                    Text("\(index + 1)/\(photoSources.count)")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(.black.opacity(0.45)))
+                        .padding(.top, 16)
+                        .padding(.trailing, 10)
+                }
+
+                HStack(spacing: 6) {
+                    ForEach(0..<photoSources.count, id: \.self) { i in
+                        Circle()
+                            .fill(i == index ? theme.ink2 : theme.ink3.opacity(0.3))
+                            .frame(width: 6, height: 6)
+                    }
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Photo Content (placeholder or real)
 
 struct PhotoContentView: View {
@@ -82,6 +145,30 @@ struct EntryThumbnailView: View {
     let entry: JournalEntry
 
     var body: some View {
+        // Drive layout with a flexible base so the image's scaledToFill overflow
+        // doesn't expand the container and shift the badge out of the clipped frame.
+        Color.clear
+            .overlay { thumbnail }
+            .overlay(alignment: .topTrailing) {
+                if entry.photoCount > 1 {
+                    HStack(spacing: 3) {
+                        Image(systemName: "square.on.square")
+                            .font(.system(size: 8, weight: .semibold))
+                        Text("\(entry.photoCount)")
+                            .font(.system(size: 10, weight: .semibold))
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(.black.opacity(0.5)))
+                    .padding(6)
+                }
+            }
+            .clipped()
+    }
+
+    @ViewBuilder
+    private var thumbnail: some View {
         switch entry.photoSource {
         case .file(let filename):
             AsyncThumbnailView(filename: filename)
@@ -234,80 +321,50 @@ struct IconChipButton: View {
 
 // MARK: - Zoomable Photo Viewer
 
+/// Full-screen photo viewer. With a single photo it supports pinch-zoom, pan,
+/// double-tap zoom, and swipe-down-to-dismiss. With multiple photos it becomes
+/// a horizontal pager; each page supports pinch/double-tap zoom and pan-when-zoomed.
 struct ZoomablePhotoViewer: View {
-    let photoSource: PhotoSource
+    let photoSources: [PhotoSource]
+    var startIndex: Int = 0
     @Binding var isPresented: Bool
 
-    @State private var scale: CGFloat = 1
-    @State private var lastScale: CGFloat = 1
-    @State private var offset: CGSize = .zero
-    @State private var lastOffset: CGSize = .zero
-    @State private var dismissOffset: CGFloat = 0
+    @State private var index = 0
 
     var body: some View {
         ZStack {
-            Color.black
-                .opacity(1.0 - min(abs(dismissOffset) / 300, 0.5))
+            Color.black.ignoresSafeArea()
+
+            if photoSources.count <= 1 {
+                ZoomablePhotoPage(
+                    photoSource: photoSources.first ?? .placeholder(.window),
+                    allowSwipeDownDismiss: true,
+                    isPresented: $isPresented
+                )
+            } else {
+                TabView(selection: $index) {
+                    ForEach(Array(photoSources.enumerated()), id: \.offset) { i, source in
+                        ZoomablePhotoPage(
+                            photoSource: source,
+                            allowSwipeDownDismiss: false,
+                            isPresented: $isPresented
+                        )
+                        .tag(i)
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
                 .ignoresSafeArea()
 
-            if let uiImage = loadImage() {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .scaledToFit()
-                    .scaleEffect(scale)
-                    .offset(offset)
-                    .offset(y: dismissOffset)
-                    .gesture(
-                        MagnifyGesture()
-                            .onChanged { value in
-                                scale = max(1, lastScale * value.magnification)
-                            }
-                            .onEnded { _ in
-                                lastScale = scale
-                                if scale < 1 { resetZoom() }
-                            }
-                            .simultaneously(with:
-                                DragGesture()
-                                    .onChanged { value in
-                                        if scale > 1 {
-                                            offset = CGSize(
-                                                width: lastOffset.width + value.translation.width,
-                                                height: lastOffset.height + value.translation.height
-                                            )
-                                        } else {
-                                            dismissOffset = value.translation.height
-                                        }
-                                    }
-                                    .onEnded { _ in
-                                        if scale > 1 {
-                                            lastOffset = offset
-                                            if scale <= 1 {
-                                                withAnimation(.easeOut(duration: 0.2)) {
-                                                    offset = .zero; lastOffset = .zero
-                                                }
-                                            }
-                                        } else {
-                                            if abs(dismissOffset) > 100 {
-                                                isPresented = false
-                                            } else {
-                                                withAnimation(.spring(response: 0.3)) {
-                                                    dismissOffset = 0
-                                                }
-                                            }
-                                        }
-                                    }
-                            )
-                    )
-                    .onTapGesture(count: 2) {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        withAnimation(.easeOut(duration: 0.25)) {
-                            if scale > 1 {
-                                resetZoom()
-                            } else {
-                                scale = 3; lastScale = 3
-                            }
-                        }
-                    }
+                VStack {
+                    Spacer()
+                    Text("\(index + 1) / \(photoSources.count)")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Capsule().fill(.white.opacity(0.2)))
+                        .padding(.bottom, 40)
+                }
             }
 
             // Close button
@@ -326,9 +383,80 @@ struct ZoomablePhotoViewer: View {
                 }
                 Spacer()
             }
-            .opacity(1.0 - min(abs(dismissOffset) / 200, 0.8))
         }
         .statusBarHidden()
+        .onAppear { index = startIndex }
+    }
+}
+
+/// A single zoomable/pannable photo page used by `ZoomablePhotoViewer`.
+private struct ZoomablePhotoPage: View {
+    let photoSource: PhotoSource
+    var allowSwipeDownDismiss: Bool
+    @Binding var isPresented: Bool
+
+    @State private var scale: CGFloat = 1
+    @State private var lastScale: CGFloat = 1
+    @State private var offset: CGSize = .zero
+    @State private var lastOffset: CGSize = .zero
+    @State private var dismissOffset: CGFloat = 0
+
+    /// Whether the drag gesture should be active. When inactive (multi-photo,
+    /// unzoomed), drags fall through to the enclosing TabView so it can page.
+    private var dragEnabled: Bool { allowSwipeDownDismiss || scale > 1 }
+
+    var body: some View {
+        if let uiImage = loadImage() {
+            Image(uiImage: uiImage)
+                .resizable()
+                .scaledToFit()
+                .scaleEffect(scale)
+                .offset(offset)
+                .offset(y: dismissOffset)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .gesture(magnifyGesture)
+                .gesture(dragGesture, including: dragEnabled ? .all : .none)
+                .onTapGesture(count: 2) {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        if scale > 1 { resetZoom() } else { scale = 3; lastScale = 3 }
+                    }
+                }
+        }
+    }
+
+    private var magnifyGesture: some Gesture {
+        MagnifyGesture()
+            .onChanged { value in scale = max(1, lastScale * value.magnification) }
+            .onEnded { _ in
+                lastScale = scale
+                if scale <= 1 { resetZoom() }
+            }
+    }
+
+    private var dragGesture: some Gesture {
+        DragGesture()
+            .onChanged { value in
+                if scale > 1 {
+                    offset = CGSize(
+                        width: lastOffset.width + value.translation.width,
+                        height: lastOffset.height + value.translation.height
+                    )
+                } else if allowSwipeDownDismiss {
+                    dismissOffset = value.translation.height
+                }
+            }
+            .onEnded { _ in
+                if scale > 1 {
+                    lastOffset = offset
+                } else if allowSwipeDownDismiss {
+                    if abs(dismissOffset) > 100 {
+                        isPresented = false
+                    } else {
+                        withAnimation(.spring(response: 0.3)) { dismissOffset = 0 }
+                    }
+                }
+            }
     }
 
     private func resetZoom() {

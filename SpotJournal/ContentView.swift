@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import PhotosUI
 
 struct ContentView: View {
     @Environment(AppState.self) private var state
@@ -27,11 +28,11 @@ struct ContentView: View {
 
             case .browse:
                 BrowseView()
-                    .transition(.move(edge: .trailing))
+                    .transition(pushPopTransition)
 
             case .entry(let id):
                 EntryDetailView(initialEntryId: id)
-                    .transition(.move(edge: .trailing))
+                    .transition(pushPopTransition)
             }
 
             // Settings overlay
@@ -42,6 +43,16 @@ struct ContentView: View {
         }
         .animation(.easeInOut(duration: 0.24), value: state.screen)
         .animation(.easeInOut(duration: 0.18), value: state.settingsOpen)
+    }
+
+    /// Slides forward (push) from the trailing edge, and back (pop) from the leading edge.
+    private var pushPopTransition: AnyTransition {
+        switch state.navDirection {
+        case .forward:
+            return .asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading))
+        case .backward:
+            return .asymmetric(insertion: .move(edge: .leading), removal: .move(edge: .trailing))
+        }
     }
 
     private var emptyState: some View {
@@ -150,6 +161,8 @@ struct EditEntrySheet: View {
     @State private var showingTagSheet = false
     @State private var selectedMoods: [Mood] = []
     @State private var showingMoodSheet = false
+    @State private var photos: [EditPhoto] = []
+    @State private var editPickerItems: [PhotosPickerItem] = []
 
     var body: some View {
         let theme = state.theme
@@ -157,12 +170,29 @@ struct EditEntrySheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    // Photo preview
-                    PhotoContentView(photoSource: entry.photoSource)
-                        .frame(height: 220)
-                        .frame(maxWidth: .infinity)
-                        .clipped()
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    // Photos (hero + editable strip)
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text("PHOTOS")
+                                .font(.system(size: 10, weight: .medium))
+                                .tracking(1)
+                                .foregroundColor(theme.fg3)
+                            Spacer()
+                            Text("\(photos.count)/\(JournalEntry.maxPhotos)")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(theme.fg4)
+                        }
+
+                        if let hero = photos.first {
+                            editHero(hero)
+                                .frame(height: 220)
+                                .frame(maxWidth: .infinity)
+                                .clipped()
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+
+                        editPhotoStrip(theme: theme)
+                    }
 
                     // Caption
                     VStack(alignment: .leading, spacing: 6) {
@@ -379,6 +409,146 @@ struct EditEntrySheet: View {
             selectedTags = entry.tags
             selectedMoods = entry.moods
             listMode = caption.contains("\n- ")
+            if photos.isEmpty {
+                photos = entry.resolvedFileNames.map { .existing($0) }
+            }
+        }
+        .onChange(of: editPickerItems) { _, newItems in
+            guard !newItems.isEmpty else { return }
+            Task {
+                await addPickedPhotos(newItems)
+                editPickerItems = []
+            }
+        }
+    }
+
+    // MARK: - Photos editing
+
+    @ViewBuilder
+    private func editHero(_ photo: EditPhoto) -> some View {
+        switch photo {
+        case .existing(let name):
+            if let ui = PhotoStore.load(name) {
+                Image(uiImage: ui).resizable().scaledToFill()
+            } else {
+                Color.gray.opacity(0.2)
+            }
+        case .new(let data):
+            if let ui = UIImage(data: data) {
+                Image(uiImage: ui).resizable().scaledToFill()
+            } else {
+                Color.gray.opacity(0.2)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func editPhotoStrip(theme: JournalTheme) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
+                    ZStack(alignment: .topTrailing) {
+                        editThumb(photo)
+                            .frame(width: 64, height: 64)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(index == 0 ? theme.accent : theme.border1,
+                                            lineWidth: index == 0 ? 2 : 1)
+                            )
+
+                        if photos.count > 1 {
+                            Button {
+                                removePhoto(at: index)
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 16))
+                                    .foregroundStyle(.white, .black.opacity(0.55))
+                            }
+                            .offset(x: 6, y: -6)
+                        }
+                    }
+                    .contextMenu {
+                        if index > 0 {
+                            Button { movePhoto(from: index, to: index - 1) } label: {
+                                Label("Move Left", systemImage: "arrow.left")
+                            }
+                        }
+                        if index < photos.count - 1 {
+                            Button { movePhoto(from: index, to: index + 1) } label: {
+                                Label("Move Right", systemImage: "arrow.right")
+                            }
+                        }
+                        if photos.count > 1 {
+                            Button(role: .destructive) {
+                                removePhoto(at: index)
+                            } label: {
+                                Label("Remove", systemImage: "trash")
+                            }
+                        }
+                    }
+                }
+
+                if photos.count < JournalEntry.maxPhotos {
+                    PhotosPicker(
+                        selection: $editPickerItems,
+                        maxSelectionCount: max(1, JournalEntry.maxPhotos - photos.count),
+                        matching: .images
+                    ) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(theme.fg2)
+                            .frame(width: 64, height: 64)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(theme.surfaceSunken)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .stroke(theme.border1, style: StrokeStyle(lineWidth: 1, dash: [3]))
+                                    )
+                            )
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func editThumb(_ photo: EditPhoto) -> some View {
+        switch photo {
+        case .existing(let name):
+            if let ui = PhotoStore.loadThumbnail(name) {
+                Image(uiImage: ui).resizable().scaledToFill()
+            } else {
+                Color.gray.opacity(0.2)
+            }
+        case .new(let data):
+            if let ui = UIImage(data: data) {
+                Image(uiImage: ui).resizable().scaledToFill()
+            } else {
+                Color.gray.opacity(0.2)
+            }
+        }
+    }
+
+    private func removePhoto(at index: Int) {
+        guard photos.count > 1, index < photos.count else { return }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        photos.remove(at: index)
+    }
+
+    private func movePhoto(from: Int, to: Int) {
+        guard from < photos.count, to >= 0, to < photos.count else { return }
+        let item = photos.remove(at: from)
+        photos.insert(item, at: to)
+    }
+
+    private func addPickedPhotos(_ items: [PhotosPickerItem]) async {
+        for item in items {
+            guard photos.count < JournalEntry.maxPhotos else { break }
+            if let data = try? await item.loadTransferable(type: Data.self) {
+                photos.append(.new(data))
+            }
         }
     }
 
@@ -393,7 +563,49 @@ struct EditEntrySheet: View {
         entry.caption = trimmed.isEmpty ? "\u{2014}" : trimmed
         entry.tags = selectedTags
         entry.moods = selectedMoods
+
+        // Persist photo edits: keep existing filenames, save any new photos,
+        // and delete files that were removed from the entry.
+        let originalNames = Set(entry.resolvedFileNames)
+        var finalNames: [String] = []
+        for photo in photos {
+            switch photo {
+            case .existing(let name):
+                finalNames.append(name)
+            case .new(let data):
+                if let name = try? PhotoStore.save(data) {
+                    finalNames.append(name)
+                }
+            }
+        }
+
+        // Guard against an empty result (shouldn't happen — remove is blocked at 1).
+        if finalNames.isEmpty, let fallback = entry.resolvedFileNames.first {
+            finalNames = [fallback]
+        }
+
+        let keptNames = Set(finalNames)
+        for removed in originalNames.subtracting(keptNames) {
+            PhotoStore.delete(removed)
+        }
+
+        entry.photoFileNames = finalNames
+        entry.photoFileName = finalNames.first
         try? state.modelContext?.save()
+    }
+}
+
+// MARK: - Edit Photo Item
+
+private enum EditPhoto: Identifiable {
+    case existing(String)
+    case new(Data)
+
+    var id: String {
+        switch self {
+        case .existing(let name): return "f:\(name)"
+        case .new(let data): return "n:\(data.hashValue)"
+        }
     }
 }
 

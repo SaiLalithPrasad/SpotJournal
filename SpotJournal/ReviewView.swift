@@ -3,6 +3,7 @@ import SwiftUI
 struct ReviewView: View {
     @Environment(AppState.self) private var state
     @State private var caption: String = ""
+    @State private var currentPhoto = 0
     @State private var listMode = false
     @State private var selectedTags: [Tag] = []
     @State private var showingTagSheet = false
@@ -18,13 +19,12 @@ struct ReviewView: View {
             // Top bar
             HStack {
                 Button {
-                    state.pendingPhotoData = nil
                     state.screen = .camera
                 } label: {
                     HStack(spacing: 6) {
-                        Image(systemName: "arrow.counterclockwise")
+                        Image(systemName: "chevron.left")
                             .font(.system(size: 12, weight: .medium))
-                        Text("Retake")
+                        Text("Camera")
                             .font(.system(size: 13, weight: .medium))
                     }
                     .foregroundColor(theme.fg2)
@@ -62,13 +62,34 @@ struct ReviewView: View {
 
             ScrollView {
                 VStack(spacing: 0) {
-                    // Photo
-                    if let photoData = state.pendingPhotoData {
-                        PhotoPasteView(
-                            photoSource: .data(photoData),
-                            width: 244, height: 288, rotation: -1.4,
-                            showTape: true, isDark: theme.isDark
-                        )
+                    // Photos
+                    if !state.pendingPhotos.isEmpty {
+                        VStack(spacing: 14) {
+                            TabView(selection: $currentPhoto) {
+                                ForEach(Array(state.pendingPhotos.enumerated()), id: \.offset) { index, data in
+                                    PhotoPasteView(
+                                        photoSource: .data(data),
+                                        width: 244, height: 288, rotation: -1.4,
+                                        showTape: true, isDark: theme.isDark
+                                    )
+                                    .tag(index)
+                                }
+                            }
+                            .tabViewStyle(.page(indexDisplayMode: .never))
+                            .frame(height: 344)
+
+                            if state.pendingPhotos.count > 1 {
+                                HStack(spacing: 6) {
+                                    ForEach(0..<state.pendingPhotos.count, id: \.self) { i in
+                                        Circle()
+                                            .fill(i == currentPhoto ? theme.accent : theme.ink3.opacity(0.3))
+                                            .frame(width: 6, height: 6)
+                                    }
+                                }
+                            }
+
+                            photoStrip(theme: theme)
+                        }
                         .padding(.top, 12)
                         .padding(.bottom, 20)
                     }
@@ -165,6 +186,102 @@ struct ReviewView: View {
         .onAppear {
             captionFocused = true
         }
+    }
+
+    // MARK: - Photo Strip (reorder / remove / add more)
+
+    @ViewBuilder
+    private func photoStrip(theme: JournalTheme) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(Array(state.pendingPhotos.enumerated()), id: \.offset) { index, data in
+                    ZStack(alignment: .topTrailing) {
+                        if let ui = UIImage(data: data) {
+                            Image(uiImage: ui)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 46, height: 46)
+                                .clipShape(RoundedRectangle(cornerRadius: 5))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 5)
+                                        .stroke(index == currentPhoto ? theme.accent : theme.border1,
+                                                lineWidth: index == currentPhoto ? 2 : 1)
+                                )
+                        }
+
+                        Button {
+                            removePhoto(at: index)
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 15))
+                                .foregroundStyle(.white, .black.opacity(0.55))
+                        }
+                        .offset(x: 5, y: -5)
+                    }
+                    .onTapGesture {
+                        withAnimation { currentPhoto = index }
+                    }
+                    .contextMenu {
+                        if index > 0 {
+                            Button { movePhoto(from: index, to: index - 1) } label: {
+                                Label("Move Left", systemImage: "arrow.left")
+                            }
+                        }
+                        if index < state.pendingPhotos.count - 1 {
+                            Button { movePhoto(from: index, to: index + 1) } label: {
+                                Label("Move Right", systemImage: "arrow.right")
+                            }
+                        }
+                        Button(role: .destructive) {
+                            removePhoto(at: index)
+                        } label: {
+                            Label("Remove", systemImage: "trash")
+                        }
+                    }
+                }
+
+                // Add more
+                if state.pendingPhotos.count < JournalEntry.maxPhotos {
+                    Button {
+                        state.screen = .camera
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(theme.fg2)
+                            .frame(width: 46, height: 46)
+                            .background(
+                                RoundedRectangle(cornerRadius: 5)
+                                    .fill(theme.surfaceSunken)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 5)
+                                            .stroke(theme.border1, style: StrokeStyle(lineWidth: 1, dash: [3]))
+                                    )
+                            )
+                    }
+                }
+            }
+            .padding(.horizontal, 24)
+        }
+    }
+
+    private func removePhoto(at index: Int) {
+        guard index < state.pendingPhotos.count else { return }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        state.pendingPhotos.remove(at: index)
+        if state.pendingPhotos.isEmpty {
+            state.screen = .camera
+            return
+        }
+        if currentPhoto >= state.pendingPhotos.count {
+            currentPhoto = state.pendingPhotos.count - 1
+        }
+    }
+
+    private func movePhoto(from: Int, to: Int) {
+        guard from < state.pendingPhotos.count, to >= 0, to < state.pendingPhotos.count else { return }
+        let item = state.pendingPhotos.remove(at: from)
+        state.pendingPhotos.insert(item, at: to)
+        currentPhoto = to
     }
 }
 

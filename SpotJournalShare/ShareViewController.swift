@@ -16,12 +16,15 @@ private enum SharedContainer {
     }
 
     struct PendingEntry: Codable {
-        let imageFilename: String
+        let imageFilenames: [String]
         let date: Date?
         let latitude: Double?
         let longitude: Double?
         let caption: String
     }
+
+    /// Maximum photos accepted per shared entry (mirrors JournalEntry.maxPhotos).
+    static let maxPhotos = 10
 }
 
 // MARK: - Share View Controller
@@ -40,44 +43,57 @@ class ShareViewController: UIViewController {
             return
         }
 
-        for item in extensionItems {
-            guard let attachments = item.attachments else { continue }
-            for provider in attachments {
-                if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
-                    provider.loadItem(forTypeIdentifier: UTType.image.identifier) { [weak self] data, _ in
-                        guard let self else { return }
+        let providers = extensionItems
+            .compactMap { $0.attachments }
+            .flatMap { $0 }
+            .filter { $0.hasItemConformingToTypeIdentifier(UTType.image.identifier) }
+            .prefix(SharedContainer.maxPhotos)
 
-                        var imageData: Data?
-                        if let url = data as? URL {
-                            imageData = try? Data(contentsOf: url)
-                        } else if let d = data as? Data {
-                            imageData = d
-                        } else if let image = data as? UIImage {
-                            imageData = image.jpegData(compressionQuality: 0.9)
-                        }
+        guard !providers.isEmpty else {
+            close()
+            return
+        }
 
-                        guard let imageData else {
-                            DispatchQueue.main.async { self.close() }
-                            return
-                        }
+        let group = DispatchGroup()
+        let lock = NSLock()
+        // Keep order stable by writing into a pre-sized array by index.
+        var images = [Data?](repeating: nil, count: providers.count)
 
-                        DispatchQueue.main.async {
-                            self.showCaptionUI(imageData: imageData)
-                        }
-                    }
-                    return
+        for (index, provider) in providers.enumerated() {
+            group.enter()
+            provider.loadItem(forTypeIdentifier: UTType.image.identifier) { data, _ in
+                var imageData: Data?
+                if let url = data as? URL {
+                    imageData = try? Data(contentsOf: url)
+                } else if let d = data as? Data {
+                    imageData = d
+                } else if let image = data as? UIImage {
+                    imageData = image.jpegData(compressionQuality: 0.9)
                 }
+                lock.lock()
+                images[index] = imageData
+                lock.unlock()
+                group.leave()
             }
         }
-        close()
+
+        group.notify(queue: .main) { [weak self] in
+            guard let self else { return }
+            let loaded = images.compactMap { $0 }
+            if loaded.isEmpty {
+                self.close()
+            } else {
+                self.showCaptionUI(images: loaded)
+            }
+        }
     }
 
-    private func showCaptionUI(imageData: Data) {
+    private func showCaptionUI(images: [Data]) {
         let hostingController = UIHostingController(
             rootView: ShareCaptionView(
-                imageData: imageData,
-                onSave: { [weak self] caption, data in
-                    self?.saveAndClose(caption: caption, imageData: data)
+                images: images,
+                onSave: { [weak self] caption, datas in
+                    self?.saveAndClose(caption: caption, images: datas)
                 },
                 onCancel: { [weak self] in
                     self?.close()
@@ -91,8 +107,10 @@ class ShareViewController: UIViewController {
         hostingController.didMove(toParent: self)
     }
 
-    private func saveAndClose(caption: String, imageData: Data) {
-        let meta = extractEXIF(from: imageData)
+    private func saveAndClose(caption: String, images: [Data]) {
+        guard let first = images.first else { close(); return }
+        // Use the first image's EXIF for the entry's date/location.
+        let meta = extractEXIF(from: first)
 
         guard let pendingDir = SharedContainer.pendingDir else {
             close()
@@ -101,11 +119,22 @@ class ShareViewController: UIViewController {
         try? FileManager.default.createDirectory(at: pendingDir, withIntermediateDirectories: true)
 
         let id = UUID().uuidString
-        let imageFile = pendingDir.appendingPathComponent("\(id).jpg")
-        try? imageData.write(to: imageFile)
+        var filenames: [String] = []
+        for (index, data) in images.enumerated() {
+            let name = "\(id)_\(index).jpg"
+            let imageFile = pendingDir.appendingPathComponent(name)
+            do {
+                try data.write(to: imageFile)
+                filenames.append(name)
+            } catch {
+                continue
+            }
+        }
+
+        guard !filenames.isEmpty else { close(); return }
 
         let entry = SharedContainer.PendingEntry(
-            imageFilename: "\(id).jpg",
+            imageFilenames: filenames,
             date: meta.date,
             latitude: meta.latitude,
             longitude: meta.longitude,
@@ -160,8 +189,8 @@ class ShareViewController: UIViewController {
 // MARK: - Caption UI
 
 private struct ShareCaptionView: View {
-    let imageData: Data
-    let onSave: (String, Data) -> Void
+    let images: [Data]
+    let onSave: (String, [Data]) -> Void
     let onCancel: () -> Void
 
     @State private var caption = ""
@@ -169,7 +198,24 @@ private struct ShareCaptionView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                if let uiImage = UIImage(data: imageData) {
+                if images.count > 1 {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(Array(images.enumerated()), id: \.offset) { _, data in
+                                if let uiImage = UIImage(data: data) {
+                                    Image(uiImage: uiImage)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 200, height: 260)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                        .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
+                                }
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                    .frame(height: 268)
+                } else if let uiImage = images.first.flatMap({ UIImage(data: $0) }) {
                     Image(uiImage: uiImage)
                         .resizable()
                         .scaledToFit()
@@ -183,7 +229,9 @@ private struct ShareCaptionView: View {
                     .textFieldStyle(.roundedBorder)
                     .padding(.horizontal)
 
-                Text("Photo will be added to your journal with its original timestamp.")
+                Text(images.count > 1
+                     ? "\(images.count) photos will be added to your journal as one entry."
+                     : "Photo will be added to your journal with its original timestamp.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
@@ -199,7 +247,7 @@ private struct ShareCaptionView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        onSave(caption.trimmingCharacters(in: .whitespacesAndNewlines), imageData)
+                        onSave(caption.trimmingCharacters(in: .whitespacesAndNewlines), images)
                     }
                     .fontWeight(.semibold)
                 }

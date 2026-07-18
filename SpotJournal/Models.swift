@@ -121,7 +121,11 @@ final class Mood {
 final class JournalEntry {
     @Attribute(.unique) var id: String
     var photoKeyRaw: String?
+    /// Legacy single-photo field. Kept for lightweight migration and backward
+    /// compatibility; `photoFileNames` is the canonical source of truth.
     var photoFileName: String?
+    /// Canonical list of real photo filenames (may be empty for placeholders).
+    var photoFileNames: [String] = []
     var caption: String
     var date: Date
     var place: String
@@ -136,11 +140,29 @@ final class JournalEntry {
 
     var isPlaceholder: Bool { photoKeyRaw != nil }
 
-    var photoSource: PhotoSource {
-        if let key = photoKey { return .placeholder(key) }
-        if let file = photoFileName { return .file(file) }
-        return .placeholder(.window)
+    /// All real photo filenames for this entry, resolving legacy single-photo
+    /// entries into a one-element array.
+    var resolvedFileNames: [String] {
+        if !photoFileNames.isEmpty { return photoFileNames }
+        if let file = photoFileName { return [file] }
+        return []
     }
+
+    /// All photo sources for this entry (placeholder → single; otherwise one per file).
+    var photoSources: [PhotoSource] {
+        if let key = photoKey { return [.placeholder(key)] }
+        let names = resolvedFileNames
+        if names.isEmpty { return [.placeholder(.window)] }
+        return names.map { .file($0) }
+    }
+
+    /// The primary (first) photo source. Kept for single-photo call sites.
+    var photoSource: PhotoSource { photoSources.first ?? .placeholder(.window) }
+
+    var photoCount: Int { photoSources.count }
+
+    /// Maximum number of photos allowed per entry.
+    static let maxPhotos = 10
 
     static func generateId() -> String {
         "e-\(Int(Date().timeIntervalSince1970))-\(Int.random(in: 1000...9999))"
@@ -157,11 +179,24 @@ final class JournalEntry {
         self.importedAt = nil
     }
 
-    /// Init for real camera entries
+    /// Init for real camera entries (single photo)
     init(id: String, photoFileName: String, caption: String, date: Date, place: String, importedAt: Date? = nil) {
         self.id = id
         self.photoKeyRaw = nil
         self.photoFileName = photoFileName
+        self.photoFileNames = [photoFileName]
+        self.caption = caption
+        self.date = date
+        self.place = place
+        self.importedAt = importedAt
+    }
+
+    /// Init for real camera entries (one or more photos)
+    init(id: String, photoFileNames: [String], caption: String, date: Date, place: String, importedAt: Date? = nil) {
+        self.id = id
+        self.photoKeyRaw = nil
+        self.photoFileName = photoFileNames.first
+        self.photoFileNames = photoFileNames
         self.caption = caption
         self.date = date
         self.place = place

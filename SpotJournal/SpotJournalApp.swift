@@ -64,11 +64,12 @@ struct SpotJournalApp: App {
         guard !pending.isEmpty else { return }
 
         for item in pending {
-            guard let filename = try? PhotoStore.save(item.data) else { continue }
+            let filenames = item.images.compactMap { try? PhotoStore.save($0) }
+            guard !filenames.isEmpty else { continue }
 
             let entry = JournalEntry(
                 id: JournalEntry.generateId(),
-                photoFileName: filename,
+                photoFileNames: filenames,
                 caption: item.meta.caption.isEmpty ? "\u{2014}" : item.meta.caption,
                 date: item.meta.date ?? Date(),
                 place: "",

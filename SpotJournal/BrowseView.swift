@@ -31,7 +31,7 @@ struct BrowseView: View {
 
                 Spacer()
 
-                Text("Entries")
+                Text("Journals")
                     .font(.system(size: 20, weight: .medium, design: .serif))
                     .tracking(-0.3)
                     .foregroundColor(theme.fg1)
@@ -302,7 +302,7 @@ struct BrowseView: View {
             // Entry count
             if !filtered.isEmpty {
                 HStack(spacing: 6) {
-                    Text("\(filtered.count) \(filtered.count == 1 ? "entry" : "entries")")
+                    Text("\(filtered.count) \(filtered.count == 1 ? "journal" : "journals")")
                     if !state.name.isEmpty {
                         Text("|")
                         Text("\(state.name)'s journal")
@@ -329,11 +329,13 @@ struct BrowseView: View {
                 }
                 .frame(maxWidth: .infinity)
             } else {
-                List {
+                ScrollViewReader { proxy in
+                    List {
                     ForEach(groups, id: \.label) { group in
                         Section {
                             ForEach(group.items) { entry in
                                 EntryCardView(entry: entry, theme: theme) {
+                                    state.browseAnchorId = entry.id
                                     state.screen = .entry(entry.id)
                                 }
                                 .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
@@ -356,9 +358,16 @@ struct BrowseView: View {
                                 .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 4, trailing: 16))
                         }
                     }
+                    }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .onAppear {
+                        guard let anchor = state.browseAnchorId else { return }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            proxy.scrollTo(anchor, anchor: .center)
+                        }
+                    }
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
             }
         }
         .background(theme.bg)

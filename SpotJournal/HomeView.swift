@@ -21,9 +21,8 @@ struct HomeView: View {
             // App header
             VStack {
                 HStack {
-                    IconChipButton(systemName: "square.grid.2x2", theme: theme) {
-                        state.screen = .browse
-                    }
+                    // Placeholder keeps the title centered (browse now lives in the bottom bar)
+                    Color.clear.frame(width: 36, height: 36)
 
                     Spacer()
 
@@ -45,19 +44,6 @@ struct HomeView: View {
 
                 Spacer()
             }
-
-            // Swipe hint
-            VStack(spacing: 6) {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .medium))
-
-                Text("swipe")
-                    .font(.system(size: 9))
-                    .tracking(0.3)
-            }
-            .foregroundColor(theme.fg4)
-            .frame(maxWidth: .infinity, alignment: .trailing)
-            .padding(.trailing, 10)
 
             // Saved toast
             if state.screen == .saved {
@@ -83,43 +69,43 @@ struct HomeView: View {
                 .animation(.easeOut(duration: 0.2), value: state.screen)
             }
 
-            // FAB — bottom right
+            // Bottom action bar — View entries (70%) + Camera (30%)
             VStack {
                 Spacer()
-                HStack {
-                    Spacer()
-                    Button {
-                        state.screen = .camera
-                    } label: {
-                        Image(systemName: "camera.fill")
-                            .font(.system(size: 24))
-                            .foregroundColor(theme.fgOnAccent)
-                            .frame(width: 68, height: 68)
-                            .background(
-                                Circle()
-                                    .fill(theme.accent)
-                                    .shadow(
-                                        color: theme.accent.opacity(0.4),
-                                        radius: 14, y: 10
-                                    )
-                                    .shadow(
-                                        color: Color(hex: 0x462D14).opacity(0.2),
-                                        radius: 1, y: 1
-                                    )
-                            )
+                GeometryReader { geo in
+                    HStack(spacing: 0) {
+                        Button {
+                            state.screen = .browse
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "square.grid.2x2")
+                                    .font(.system(size: 15, weight: .medium))
+                                Text("View journals")
+                                    .font(.system(size: 16, weight: .semibold))
+                            }
+                            .foregroundColor(theme.accent)
+                            .frame(width: geo.size.width * 0.7, height: 58)
+                            .background(theme.accentSoft)
+                        }
+
+                        Button {
+                            state.screen = .camera
+                        } label: {
+                            Image(systemName: "camera.fill")
+                                .font(.system(size: 22))
+                                .foregroundColor(theme.fgOnAccent)
+                                .frame(width: geo.size.width * 0.3, height: 58)
+                                .background(theme.accent)
+                        }
                     }
-                    .padding(.trailing, 24)
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(theme.border1, lineWidth: 1))
+                    .shadow(color: Color(hex: 0x462D14).opacity(0.12), radius: 10, y: 6)
                 }
+                .frame(height: 58)
+                .padding(.horizontal, 24)
                 .padding(.bottom, 46)
             }
         }
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 60)
-                .onEnded { value in
-                    if value.translation.width < -60 {
-                        state.screen = .browse
-                    }
-                }
-        )
     }
 }

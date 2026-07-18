@@ -6,7 +6,7 @@ struct CameraView: View {
     @State private var cameraService = CameraService()
     @State private var locationService = LocationService()
     @State private var shutterFlash = false
-    @State private var pickerItem: PhotosPickerItem?
+    @State private var pickerItems: [PhotosPickerItem] = []
     @State private var isLoadingPick = false
     @State private var focusPoint: CGPoint = .zero
     @State private var showFocusIndicator = false
@@ -81,6 +81,7 @@ struct CameraView: View {
                 // Top bar
                 HStack {
                     Button {
+                        state.pendingPhotos = []
                         state.screen = .home
                     } label: {
                         Image(systemName: "xmark")
@@ -100,7 +101,7 @@ struct CameraView: View {
                             .padding(.vertical, 6)
                             .background(Capsule().fill(.black.opacity(0.32)))
                     } else {
-                        Text("Tap to capture")
+                        Text(captureHint)
                             .font(.system(size: 13, weight: .medium))
                             .tracking(0.2)
                             .foregroundColor(.white)
@@ -158,10 +159,19 @@ struct CameraView: View {
                         .background(Capsule().fill(.black.opacity(0.35)))
                     }
 
+                    // Captured photo tray
+                    if !state.pendingPhotos.isEmpty {
+                        photoTray
+                    }
+
                     // Shutter row
                     HStack {
                         // Gallery picker
-                        PhotosPicker(selection: $pickerItem, matching: .images) {
+                        PhotosPicker(
+                            selection: $pickerItems,
+                            maxSelectionCount: max(1, JournalEntry.maxPhotos - state.pendingPhotos.count),
+                            matching: .images
+                        ) {
                             ZStack {
                                 RoundedRectangle(cornerRadius: 8)
                                     .fill(Color(hex: 0x28190F).opacity(0.6))
@@ -179,6 +189,8 @@ struct CameraView: View {
                             }
                             .frame(width: 40, height: 40)
                         }
+                        .disabled(isAtCapacity)
+                        .opacity(isAtCapacity ? 0.4 : 1)
 
                         Spacer()
 
@@ -200,7 +212,8 @@ struct CameraView: View {
                                         .frame(width: 82, height: 82)
                                 )
                         }
-                        .disabled(!cameraService.isAuthorized)
+                        .disabled(!cameraService.isAuthorized || isAtCapacity)
+                        .opacity(isAtCapacity ? 0.4 : 1)
 
                         Spacer()
 
@@ -217,6 +230,30 @@ struct CameraView: View {
                         }
                     }
                     .padding(.horizontal, 24)
+
+                    // Continue to review
+                    if !state.pendingPhotos.isEmpty {
+                        Button {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            state.screen = .review
+                        } label: {
+                            HStack(spacing: 8) {
+                                Text("Continue")
+                                    .font(.system(size: 16, weight: .semibold))
+                                Text("\(state.pendingPhotos.count)")
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .frame(minWidth: 22, minHeight: 22)
+                                    .background(Circle().fill(.black.opacity(0.85)))
+                                Image(systemName: "arrow.right")
+                                    .font(.system(size: 14, weight: .semibold))
+                            }
+                            .foregroundColor(.black)
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 13)
+                            .background(Capsule().fill(.white))
+                        }
+                    }
                 }
                 .padding(.bottom, 56)
             }
@@ -232,22 +269,78 @@ struct CameraView: View {
             locationService.stopUpdating()
         }
         .onChange(of: cameraService.capturedPhotoData) { _, newData in
-            if let data = newData {
-                state.pendingPhotoData = data
-                state.pendingDate = Date()
-                state.pendingPlace = locationService.currentPlace
-                state.screen = .review
-                cameraService.capturedPhotoData = nil
-            }
+            guard let data = newData else { return }
+            addCameraPhoto(data)
+            cameraService.capturedPhotoData = nil
         }
-        .onChange(of: pickerItem) { _, newItem in
-            guard let newItem else { return }
+        .onChange(of: pickerItems) { _, newItems in
+            guard !newItems.isEmpty else { return }
             isLoadingPick = true
             Task {
-                await handlePickedPhoto(newItem)
+                await handlePickedPhotos(newItems)
                 isLoadingPick = false
-                pickerItem = nil
+                pickerItems = []
             }
+        }
+    }
+
+    // MARK: - Tray
+
+    private var photoTray: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(Array(state.pendingPhotos.enumerated()), id: \.offset) { index, data in
+                    ZStack(alignment: .topTrailing) {
+                        if let ui = UIImage(data: data) {
+                            Image(uiImage: ui)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 52, height: 52)
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(.white.opacity(0.5), lineWidth: 1)
+                                )
+                        }
+
+                        Button {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            guard index < state.pendingPhotos.count else { return }
+                            state.pendingPhotos.remove(at: index)
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 17))
+                                .foregroundStyle(.white, .black.opacity(0.6))
+                        }
+                        .offset(x: 6, y: -6)
+                    }
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 6)
+        }
+    }
+
+    // MARK: - Helpers
+
+    private var isAtCapacity: Bool {
+        state.pendingPhotos.count >= JournalEntry.maxPhotos
+    }
+
+    private var captureHint: String {
+        state.pendingPhotos.isEmpty
+            ? "Tap to capture"
+            : "\(state.pendingPhotos.count) of \(JournalEntry.maxPhotos)"
+    }
+
+    /// Appends a freshly captured camera photo, seeding date/place if it's the first.
+    private func addCameraPhoto(_ data: Data) {
+        guard state.pendingPhotos.count < JournalEntry.maxPhotos else { return }
+        let wasEmpty = state.pendingPhotos.isEmpty
+        state.pendingPhotos.append(data)
+        if wasEmpty {
+            state.pendingDate = Date()
+            state.pendingPlace = locationService.currentPlace
         }
     }
 
@@ -262,22 +355,24 @@ struct CameraView: View {
 
     // MARK: - Gallery Pick
 
-    private func handlePickedPhoto(_ item: PhotosPickerItem) async {
-        guard let data = try? await item.loadTransferable(type: Data.self) else { return }
+    private func handlePickedPhotos(_ items: [PhotosPickerItem]) async {
+        for item in items {
+            guard state.pendingPhotos.count < JournalEntry.maxPhotos else { break }
+            guard let data = try? await item.loadTransferable(type: Data.self) else { continue }
 
-        // Extract EXIF metadata
-        let metadata = PhotoMetadata.extract(from: data)
+            let wasEmpty = state.pendingPhotos.isEmpty
+            state.pendingPhotos.append(data)
 
-        state.pendingPhotoData = data
-        state.pendingDate = metadata.date
-        state.pendingPlace = ""
-
-        // Reverse geocode if GPS coordinates are available
-        if let lat = metadata.latitude, let lon = metadata.longitude {
-            let place = await PhotoMetadata.reverseGeocode(latitude: lat, longitude: lon)
-            state.pendingPlace = place
+            // The entry has a single date/place — seed it from the first photo added.
+            if wasEmpty {
+                let metadata = PhotoMetadata.extract(from: data)
+                state.pendingDate = metadata.date
+                state.pendingPlace = ""
+                if let lat = metadata.latitude, let lon = metadata.longitude {
+                    let place = await PhotoMetadata.reverseGeocode(latitude: lat, longitude: lon)
+                    state.pendingPlace = place
+                }
+            }
         }
-
-        state.screen = .review
     }
 }

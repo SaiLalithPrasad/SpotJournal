@@ -8,6 +8,20 @@ enum AppScreen: Equatable {
     case browse
     case entry(String)
     case saved
+
+    /// Depth in the navigation hierarchy — used to pick push vs pop transitions.
+    var depth: Int {
+        switch self {
+        case .home, .saved: return 0
+        case .camera, .browse: return 1
+        case .review, .entry: return 2
+        }
+    }
+}
+
+enum NavDirection {
+    case forward
+    case backward
 }
 
 @MainActor @Observable
@@ -32,13 +46,21 @@ class AppState {
 
     // MARK: - Navigation
 
-    var screen: AppScreen = .home
+    var screen: AppScreen = .home {
+        didSet {
+            navDirection = screen.depth >= oldValue.depth ? .forward : .backward
+        }
+    }
+    var navDirection: NavDirection = .forward
     var settingsOpen: Bool = false
     var cameraMode: String = "photo"
 
+    /// Entry id to restore the Browse scroll position to after viewing an entry.
+    var browseAnchorId: String?
+
     // MARK: - Capture Flow
 
-    var pendingPhotoData: Data?
+    var pendingPhotos: [Data] = []
     var pendingDate: Date?
     var pendingPlace: String = ""
 
@@ -99,9 +121,11 @@ class AppState {
     // MARK: - Actions
 
     func savePage(caption: String, tags: [Tag] = [], moods: [Mood] = []) {
-        guard let photoData = pendingPhotoData, let context = modelContext else { return }
+        guard !pendingPhotos.isEmpty, let context = modelContext else { return }
 
-        guard let filename = try? PhotoStore.save(photoData) else { return }
+        // Persist all pending photos; keep only the ones that saved successfully.
+        let filenames = pendingPhotos.compactMap { try? PhotoStore.save($0) }
+        guard !filenames.isEmpty else { return }
 
         // Set importedAt when the photo's date differs from now (gallery import of old photo)
         let photoDate = pendingDate ?? Date()
@@ -109,7 +133,7 @@ class AppState {
 
         let entry = JournalEntry(
             id: JournalEntry.generateId(),
-            photoFileName: filename,
+            photoFileNames: filenames,
             caption: caption.isEmpty ? "\u{2014}" : caption,
             date: photoDate,
             place: pendingPlace,
@@ -122,7 +146,7 @@ class AppState {
         UINotificationFeedbackGenerator().notificationOccurred(.success)
 
         screen = .saved
-        pendingPhotoData = nil
+        pendingPhotos = []
 
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(1.4))
@@ -207,7 +231,7 @@ class AppState {
         let allEntries = entries
         for entry in allEntries {
             // Delete photo files for real captures
-            if let filename = entry.photoFileName {
+            for filename in entry.resolvedFileNames {
                 PhotoStore.delete(filename)
             }
             context.delete(entry)
