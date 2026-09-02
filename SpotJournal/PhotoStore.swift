@@ -71,6 +71,12 @@ enum PhotoStore {
         return UIImage(data: data)
     }
 
+    /// Whether an on-disk thumbnail already exists for the given filename.
+    static func thumbnailExists(for filename: String) -> Bool {
+        let thumbURL = photosDirectory.appendingPathComponent(thumbnailFilename(for: filename))
+        return FileManager.default.fileExists(atPath: thumbURL.path)
+    }
+
     /// Load a thumbnail UIImage by filename.
     /// Falls back to loading the full image if no thumbnail exists.
     static func loadThumbnail(_ filename: String) -> UIImage? {

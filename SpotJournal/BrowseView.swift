@@ -437,13 +437,17 @@ struct BrowseView: View {
         return result
     }
 
+    private static let monthYearFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMMM yyyy"
+        return f
+    }()
+
     private func groupEntries(_ entries: [JournalEntry]) -> [EntryGroup] {
         var groups: [EntryGroup] = []
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM yyyy"
         var current: EntryGroup?
         for entry in entries {
-            let label = formatter.string(from: entry.date)
+            let label = Self.monthYearFormatter.string(from: entry.date)
             if current?.label != label {
                 if let c = current { groups.append(c) }
                 current = EntryGroup(label: label, items: [])
@@ -592,12 +596,21 @@ private struct EntryCardView: View {
         .buttonStyle(.plain)
     }
 
+    private static let dayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM d"
+        return f
+    }()
+
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "h:mm a"
+        return f
+    }()
+
     private var dateLabel: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d"
-        let date = formatter.string(from: entry.date)
-        formatter.dateFormat = "h:mm a"
-        let time = formatter.string(from: entry.date).lowercased()
+        let date = Self.dayFormatter.string(from: entry.date)
+        let time = Self.timeFormatter.string(from: entry.date).lowercased()
         return "\(date) \u{00B7} \(time)"
     }
 }

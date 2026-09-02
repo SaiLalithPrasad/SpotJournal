@@ -208,11 +208,17 @@ struct AsyncThumbnailView: View {
                 self.image = cached
                 return
             }
-            let loaded = await Task.detached(priority: .utility) {
-                let thumb = PhotoStore.loadThumbnail(filename)
-                // Lazy-generate thumbnail for older entries
-                PhotoStore.generateThumbnail(for: filename)
-                return thumb
+            let loaded = await Task.detached(priority: .utility) { () -> UIImage? in
+                // Lazy-generate the on-disk thumbnail only for older entries that
+                // don't have one yet. New entries get a thumbnail at save time, so
+                // this must not re-run the expensive downsample on every appearance.
+                if !PhotoStore.thumbnailExists(for: filename) {
+                    PhotoStore.generateThumbnail(for: filename)
+                }
+                guard let thumb = PhotoStore.loadThumbnail(filename) else { return nil }
+                // Force-decode the JPEG to a bitmap off the main thread so the
+                // decode doesn't land on the main thread during scroll.
+                return await thumb.byPreparingForDisplay() ?? thumb
             }.value
             if let loaded {
                 ThumbnailCache.shared.setImage(loaded, for: filename)
