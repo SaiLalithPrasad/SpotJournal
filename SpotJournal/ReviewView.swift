@@ -9,6 +9,8 @@ struct ReviewView: View {
     @State private var showingTagSheet = false
     @State private var selectedMoods: [Mood] = []
     @State private var showingMoodSheet = false
+    @State private var voiceState: VoiceNoteState = .none
+    @State private var voiceRecorder = AudioRecorder()
     @FocusState private var captionFocused: Bool
 
     var body: some View {
@@ -42,6 +44,16 @@ struct ReviewView: View {
                 Spacer()
 
                 Button {
+                    // Finalize an in-progress recording so it isn't lost when
+                    // the user saves without tapping Stop first.
+                    var finalVoice = voiceState
+                    if voiceRecorder.isRecording, let (url, duration) = voiceRecorder.stop() {
+                        finalVoice = .recorded(url, duration)
+                    }
+                    if case .recorded(let url, let duration) = finalVoice {
+                        state.pendingAudioURL = url
+                        state.pendingAudioDuration = duration
+                    }
                     state.savePage(caption: caption.trimmingCharacters(in: .whitespacesAndNewlines), tags: selectedTags, moods: selectedMoods)
                 } label: {
                     HStack(spacing: 6) {
@@ -159,6 +171,12 @@ struct ReviewView: View {
                         theme: theme
                     )
                     .padding(.horizontal, 24)
+
+                    Spacer().frame(height: 16)
+
+                    // Voice note
+                    VoiceNoteSection(state: $voiceState, recorder: voiceRecorder, theme: theme)
+                        .padding(.horizontal, 24)
 
                     Spacer().frame(height: 16)
 

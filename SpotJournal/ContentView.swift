@@ -163,6 +163,8 @@ struct EditEntrySheet: View {
     @State private var showingMoodSheet = false
     @State private var photos: [EditPhoto] = []
     @State private var editPickerItems: [PhotosPickerItem] = []
+    @State private var voiceState: VoiceNoteState = .none
+    @State private var voiceRecorder = AudioRecorder()
 
     var body: some View {
         let theme = state.theme
@@ -359,6 +361,9 @@ struct EditEntrySheet: View {
                         }
                     }
 
+                    // Voice note
+                    VoiceNoteSection(state: $voiceState, recorder: voiceRecorder, theme: theme)
+
                     // Date & location (read-only display)
                     VStack(alignment: .leading, spacing: 4) {
                         Text("DATE & LOCATION")
@@ -411,6 +416,9 @@ struct EditEntrySheet: View {
             listMode = caption.contains("\n- ")
             if photos.isEmpty {
                 photos = entry.resolvedFileNames.map { .existing($0) }
+            }
+            if !voiceState.hasNote {
+                voiceState = entry.audioFileName.map { .existing($0) } ?? .none
             }
         }
         .onChange(of: editPickerItems) { _, newItems in
@@ -591,6 +599,30 @@ struct EditEntrySheet: View {
 
         entry.photoFileNames = finalNames
         entry.photoFileName = finalNames.first
+
+        // Finalize an in-progress recording so it isn't lost on save.
+        var effectiveVoice = voiceState
+        if voiceRecorder.isRecording, let (url, duration) = voiceRecorder.stop() {
+            effectiveVoice = .recorded(url, duration)
+        }
+
+        // Persist voice-note edits: keep existing, save a new recording, or remove.
+        let previousAudio = entry.audioFileName
+        switch effectiveVoice {
+        case .none:
+            if let previousAudio { AudioStore.delete(previousAudio) }
+            entry.audioFileName = nil
+            entry.audioDuration = 0
+        case .existing:
+            break // unchanged
+        case .recorded(let url, let duration):
+            if let name = try? AudioStore.save(from: url) {
+                if let previousAudio { AudioStore.delete(previousAudio) }
+                entry.audioFileName = name
+                entry.audioDuration = duration
+            }
+        }
+
         try? state.modelContext?.save()
     }
 }

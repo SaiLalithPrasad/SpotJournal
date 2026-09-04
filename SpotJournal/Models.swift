@@ -132,6 +132,14 @@ final class JournalEntry {
     var importedAt: Date?
     var tags: [Tag] = []
     var moods: [Mood] = []
+    /// Filename (not a full path) of an optional voice note stored via AudioStore.
+    /// nil for entries without audio. Resolved against the Documents dir at access time.
+    var audioFileName: String?
+    /// Duration of the voice note in seconds (0 when there is no audio).
+    var audioDuration: Double = 0
+
+    /// Whether this entry carries a voice note.
+    var hasAudio: Bool { audioFileName != nil }
 
     var photoKey: PhotoKey? {
         guard let raw = photoKeyRaw else { return nil }

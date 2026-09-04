@@ -63,6 +63,9 @@ class AppState {
     var pendingPhotos: [Data] = []
     var pendingDate: Date?
     var pendingPlace: String = ""
+    /// Temp URL of a voice note recorded during the capture flow (nil if none).
+    var pendingAudioURL: URL?
+    var pendingAudioDuration: Double = 0
 
     // MARK: - SwiftData
 
@@ -141,12 +144,21 @@ class AppState {
         )
         entry.tags = tags
         entry.moods = moods
+
+        // Persist an optional voice note recorded during this capture.
+        if let audioURL = pendingAudioURL, let audioName = try? AudioStore.save(from: audioURL) {
+            entry.audioFileName = audioName
+            entry.audioDuration = pendingAudioDuration
+        }
+
         context.insert(entry)
         try? context.save()
         UINotificationFeedbackGenerator().notificationOccurred(.success)
 
         screen = .saved
         pendingPhotos = []
+        pendingAudioURL = nil
+        pendingAudioDuration = 0
 
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(1.4))
@@ -233,6 +245,9 @@ class AppState {
             // Delete photo files for real captures
             for filename in entry.resolvedFileNames {
                 PhotoStore.delete(filename)
+            }
+            if let audio = entry.audioFileName {
+                AudioStore.delete(audio)
             }
             context.delete(entry)
         }

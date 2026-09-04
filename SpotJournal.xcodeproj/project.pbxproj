@@ -435,6 +435,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Spot​Journal uses your camera to capture moments for your journal.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "SpotJournal uses the microphone to record voice notes for your journal. Recordings stays on your device always, just like any other information on this app.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Spot​Journal uses your location to tag where each moment was captured.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -471,6 +472,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Spot​Journal uses your camera to capture moments for your journal.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "SpotJournal uses the microphone to record voice notes for your journal.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Spot​Journal uses your location to tag where each moment was captured.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
