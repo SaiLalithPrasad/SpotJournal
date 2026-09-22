@@ -60,7 +60,7 @@ class AppState {
 
     // MARK: - Capture Flow
 
-    var pendingPhotos: [Data] = []
+    var pendingPhotos: [PendingPhoto] = []
     var pendingDate: Date?
     var pendingPlace: String = ""
     /// Temp URL of a voice note recorded during the capture flow (nil if none).
@@ -127,7 +127,7 @@ class AppState {
         guard !pendingPhotos.isEmpty, let context = modelContext else { return }
 
         // Persist all pending photos; keep only the ones that saved successfully.
-        let filenames = pendingPhotos.compactMap { try? PhotoStore.save($0) }
+        let filenames = pendingPhotos.compactMap { try? PhotoStore.save($0.data) }
         guard !filenames.isEmpty else { return }
 
         // Set importedAt when the photo's date differs from now (gallery import of old photo)

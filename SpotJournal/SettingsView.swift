@@ -381,13 +381,10 @@ struct SettingsSheet: View {
         ) { result in
             handleImport(result)
         }
-        .alert("Import Complete", isPresented: .init(
-            get: { importMessage != nil },
-            set: { if !$0 { importMessage = nil } }
-        )) {
-            Button("OK") { importMessage = nil }
-        } message: {
-            Text(importMessage ?? "")
+        .alert("Import Complete", item: $importMessage) { _ in
+            Button("OK") {}
+        } message: { message in
+            Text(message)
         }
         .overlay {
             if isExporting || isExportingPDF {

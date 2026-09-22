@@ -371,20 +371,12 @@ struct BrowseView: View {
             }
         }
         .background(theme.bg)
-        .alert("Delete Entry?", isPresented: .init(
-            get: { entryToDelete != nil },
-            set: { if !$0 { entryToDelete = nil } }
-        )) {
+        .alert("Delete Entry?", item: $entryToDelete) { entry in
             Button("Delete", role: .destructive) {
-                if let entry = entryToDelete {
-                    deleteEntry(entry)
-                    entryToDelete = nil
-                }
+                deleteEntry(entry)
             }
-            Button("Cancel", role: .cancel) {
-                entryToDelete = nil
-            }
-        } message: {
+            Button("Cancel", role: .cancel) {}
+        } message: { _ in
             Text("This entry and its photo will be permanently deleted.")
         }
         .onAppear {

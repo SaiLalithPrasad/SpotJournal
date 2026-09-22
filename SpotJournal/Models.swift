@@ -51,6 +51,18 @@ enum PhotoSource {
     case data(Data)
 }
 
+/// A photo captured or picked during the capture flow. Carries a stable id so
+/// SwiftUI can identify rows across reordering (raw `Data` has no identity).
+struct PendingPhoto: Identifiable, Equatable {
+    let id: UUID
+    let data: Data
+
+    init(id: UUID = UUID(), data: Data) {
+        self.id = id
+        self.data = data
+    }
+}
+
 // MARK: - Tag (SwiftData)
 
 @Model

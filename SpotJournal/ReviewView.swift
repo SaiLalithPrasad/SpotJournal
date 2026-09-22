@@ -3,7 +3,7 @@ import SwiftUI
 struct ReviewView: View {
     @Environment(AppState.self) private var state
     @State private var caption: String = ""
-    @State private var currentPhoto = 0
+    @State private var currentPhotoID: PendingPhoto.ID?
     @State private var listMode = false
     @State private var selectedTags: [Tag] = []
     @State private var showingTagSheet = false
@@ -77,14 +77,14 @@ struct ReviewView: View {
                     // Photos
                     if !state.pendingPhotos.isEmpty {
                         VStack(spacing: 14) {
-                            TabView(selection: $currentPhoto) {
-                                ForEach(Array(state.pendingPhotos.enumerated()), id: \.offset) { index, data in
+                            TabView(selection: $currentPhotoID) {
+                                ForEach(state.pendingPhotos) { photo in
                                     PhotoPasteView(
-                                        photoSource: .data(data),
+                                        photoSource: .data(photo.data),
                                         width: 244, height: 288, rotation: -1.4,
                                         showTape: true, isDark: theme.isDark
                                     )
-                                    .tag(index)
+                                    .tag(Optional(photo.id))
                                 }
                             }
                             .tabViewStyle(.page(indexDisplayMode: .never))
@@ -92,9 +92,9 @@ struct ReviewView: View {
 
                             if state.pendingPhotos.count > 1 {
                                 HStack(spacing: 6) {
-                                    ForEach(0..<state.pendingPhotos.count, id: \.self) { i in
+                                    ForEach(state.pendingPhotos) { photo in
                                         Circle()
-                                            .fill(i == currentPhoto ? theme.accent : theme.ink3.opacity(0.3))
+                                            .fill(photo.id == currentPhotoID ? theme.accent : theme.ink3.opacity(0.3))
                                             .frame(width: 6, height: 6)
                                     }
                                 }
@@ -203,6 +203,9 @@ struct ReviewView: View {
         }
         .onAppear {
             captionFocused = true
+            if currentPhotoID == nil {
+                currentPhotoID = state.pendingPhotos.first?.id
+            }
         }
     }
 
@@ -212,9 +215,9 @@ struct ReviewView: View {
     private func photoStrip(theme: JournalTheme) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach(Array(state.pendingPhotos.enumerated()), id: \.offset) { index, data in
+                ForEach(state.pendingPhotos) { photo in
                     ZStack(alignment: .topTrailing) {
-                        if let ui = UIImage(data: data) {
+                        if let ui = UIImage(data: photo.data) {
                             Image(uiImage: ui)
                                 .resizable()
                                 .scaledToFill()
@@ -222,13 +225,13 @@ struct ReviewView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 5))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 5)
-                                        .stroke(index == currentPhoto ? theme.accent : theme.border1,
-                                                lineWidth: index == currentPhoto ? 2 : 1)
+                                        .stroke(photo.id == currentPhotoID ? theme.accent : theme.border1,
+                                                lineWidth: photo.id == currentPhotoID ? 2 : 1)
                                 )
                         }
 
                         Button {
-                            removePhoto(at: index)
+                            removePhoto(photo)
                         } label: {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.system(size: 15))
@@ -237,26 +240,17 @@ struct ReviewView: View {
                         .offset(x: 5, y: -5)
                     }
                     .onTapGesture {
-                        withAnimation { currentPhoto = index }
+                        withAnimation { currentPhotoID = photo.id }
                     }
                     .contextMenu {
-                        if index > 0 {
-                            Button { movePhoto(from: index, to: index - 1) } label: {
-                                Label("Move Left", systemImage: "arrow.left")
-                            }
-                        }
-                        if index < state.pendingPhotos.count - 1 {
-                            Button { movePhoto(from: index, to: index + 1) } label: {
-                                Label("Move Right", systemImage: "arrow.right")
-                            }
-                        }
                         Button(role: .destructive) {
-                            removePhoto(at: index)
+                            removePhoto(photo)
                         } label: {
                             Label("Remove", systemImage: "trash")
                         }
                     }
                 }
+                .reorderable()
 
                 // Add more
                 if state.pendingPhotos.count < JournalEntry.maxPhotos {
@@ -279,27 +273,24 @@ struct ReviewView: View {
                 }
             }
             .padding(.horizontal, 24)
+            .reorderContainer(for: PendingPhoto.self) { difference in
+                withAnimation(.easeOut(duration: 0.18)) {
+                    difference.apply(to: &state.pendingPhotos)
+                }
+            }
         }
     }
 
-    private func removePhoto(at index: Int) {
-        guard index < state.pendingPhotos.count else { return }
+    private func removePhoto(_ photo: PendingPhoto) {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        state.pendingPhotos.remove(at: index)
+        state.pendingPhotos.removeAll { $0.id == photo.id }
         if state.pendingPhotos.isEmpty {
             state.screen = .camera
             return
         }
-        if currentPhoto >= state.pendingPhotos.count {
-            currentPhoto = state.pendingPhotos.count - 1
+        if currentPhotoID == photo.id {
+            currentPhotoID = state.pendingPhotos.first?.id
         }
-    }
-
-    private func movePhoto(from: Int, to: Int) {
-        guard from < state.pendingPhotos.count, to >= 0, to < state.pendingPhotos.count else { return }
-        let item = state.pendingPhotos.remove(at: from)
-        state.pendingPhotos.insert(item, at: to)
-        currentPhoto = to
     }
 }
 
@@ -589,22 +580,14 @@ struct TagPickerSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
-        .alert("Rename Tag", isPresented: .init(
-            get: { editingTag != nil },
-            set: { if !$0 { editingTag = nil } }
-        )) {
+        .alert("Rename Tag", item: $editingTag) { tag in
             TextField("Tag name", text: $editingTagName)
             Button("Save") {
-                if let tag = editingTag {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    state.renameTag(tag, to: editingTagName)
-                }
-                editingTag = nil
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                state.renameTag(tag, to: editingTagName)
             }
-            Button("Cancel", role: .cancel) {
-                editingTag = nil
-            }
-        } message: {
+            Button("Cancel", role: .cancel) {}
+        } message: { _ in
             Text("Enter a new name for this tag.")
         }
     }
@@ -953,24 +936,16 @@ struct MoodPickerSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
-        .alert("Edit Mood", isPresented: .init(
-            get: { editingMood != nil },
-            set: { if !$0 { editingMood = nil } }
-        )) {
+        .alert("Edit Mood", item: $editingMood) { mood in
             TextField("Mood name", text: $editingMoodName)
             TextField("Emoji", text: $editingMoodEmoji)
             Button("Save") {
-                if let mood = editingMood {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    state.renameMood(mood, to: editingMoodName)
-                    state.updateMoodEmoji(mood, to: editingMoodEmoji)
-                }
-                editingMood = nil
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                state.renameMood(mood, to: editingMoodName)
+                state.updateMoodEmoji(mood, to: editingMoodEmoji)
             }
-            Button("Cancel", role: .cancel) {
-                editingMood = nil
-            }
-        } message: {
+            Button("Cancel", role: .cancel) {}
+        } message: { _ in
             Text("Update the name and emoji for this mood.")
         }
     }
