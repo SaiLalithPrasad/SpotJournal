@@ -371,20 +371,12 @@ struct BrowseView: View {
             }
         }
         .background(theme.bg)
-        .alert("Delete Entry?", isPresented: .init(
-            get: { entryToDelete != nil },
-            set: { if !$0 { entryToDelete = nil } }
-        )) {
+        .alert("Delete Entry?", item: $entryToDelete) { entry in
             Button("Delete", role: .destructive) {
-                if let entry = entryToDelete {
-                    deleteEntry(entry)
-                    entryToDelete = nil
-                }
+                deleteEntry(entry)
             }
-            Button("Cancel", role: .cancel) {
-                entryToDelete = nil
-            }
-        } message: {
+            Button("Cancel", role: .cancel) {}
+        } message: { _ in
             Text("This entry and its photo will be permanently deleted.")
         }
         .onAppear {
@@ -469,6 +461,9 @@ struct BrowseView: View {
         if let filename = entry.photoFileName {
             PhotoStore.delete(filename)
         }
+        if let audio = entry.audioFileName {
+            AudioStore.delete(audio)
+        }
         context.delete(entry)
         try? context.save()
         UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -495,6 +490,16 @@ private struct EntryCardView: View {
                     .frame(width: 76, height: 92)
                     .clipped()
                     .clipShape(RoundedRectangle(cornerRadius: 2))
+                    .overlay(alignment: .bottomTrailing) {
+                        if entry.hasAudio {
+                            Image(systemName: "waveform")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(width: 18, height: 18)
+                                .background(Circle().fill(theme.accent))
+                                .padding(4)
+                        }
+                    }
                     .shadow(color: Color(hex: 0x462D14).opacity(0.08), radius: 5, y: 4)
 
                 VStack(alignment: .leading, spacing: 4) {

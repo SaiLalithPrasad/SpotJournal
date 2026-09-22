@@ -163,6 +163,8 @@ struct EditEntrySheet: View {
     @State private var showingMoodSheet = false
     @State private var photos: [EditPhoto] = []
     @State private var editPickerItems: [PhotosPickerItem] = []
+    @State private var voiceState: VoiceNoteState = .none
+    @State private var voiceRecorder = AudioRecorder()
 
     var body: some View {
         let theme = state.theme
@@ -359,6 +361,9 @@ struct EditEntrySheet: View {
                         }
                     }
 
+                    // Voice note
+                    VoiceNoteSection(state: $voiceState, recorder: voiceRecorder, theme: theme)
+
                     // Date & location (read-only display)
                     VStack(alignment: .leading, spacing: 4) {
                         Text("DATE & LOCATION")
@@ -412,6 +417,9 @@ struct EditEntrySheet: View {
             if photos.isEmpty {
                 photos = entry.resolvedFileNames.map { .existing($0) }
             }
+            if !voiceState.hasNote {
+                voiceState = entry.audioFileName.map { .existing($0) } ?? .none
+            }
         }
         .onChange(of: editPickerItems) { _, newItems in
             guard !newItems.isEmpty else { return }
@@ -433,7 +441,7 @@ struct EditEntrySheet: View {
             } else {
                 Color.gray.opacity(0.2)
             }
-        case .new(let data):
+        case .new(_, let data):
             if let ui = UIImage(data: data) {
                 Image(uiImage: ui).resizable().scaledToFill()
             } else {
@@ -446,20 +454,21 @@ struct EditEntrySheet: View {
     private func editPhotoStrip(theme: JournalTheme) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
+                ForEach(photos) { photo in
+                    let isHero = photo.id == photos.first?.id
                     ZStack(alignment: .topTrailing) {
                         editThumb(photo)
                             .frame(width: 64, height: 64)
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 6)
-                                    .stroke(index == 0 ? theme.accent : theme.border1,
-                                            lineWidth: index == 0 ? 2 : 1)
+                                    .stroke(isHero ? theme.accent : theme.border1,
+                                            lineWidth: isHero ? 2 : 1)
                             )
 
                         if photos.count > 1 {
                             Button {
-                                removePhoto(at: index)
+                                removePhoto(photo)
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
                                     .font(.system(size: 16))
@@ -469,25 +478,16 @@ struct EditEntrySheet: View {
                         }
                     }
                     .contextMenu {
-                        if index > 0 {
-                            Button { movePhoto(from: index, to: index - 1) } label: {
-                                Label("Move Left", systemImage: "arrow.left")
-                            }
-                        }
-                        if index < photos.count - 1 {
-                            Button { movePhoto(from: index, to: index + 1) } label: {
-                                Label("Move Right", systemImage: "arrow.right")
-                            }
-                        }
                         if photos.count > 1 {
                             Button(role: .destructive) {
-                                removePhoto(at: index)
+                                removePhoto(photo)
                             } label: {
                                 Label("Remove", systemImage: "trash")
                             }
                         }
                     }
                 }
+                .reorderable()
 
                 if photos.count < JournalEntry.maxPhotos {
                     PhotosPicker(
@@ -510,6 +510,11 @@ struct EditEntrySheet: View {
                     }
                 }
             }
+            .reorderContainer(for: EditPhoto.self) { difference in
+                withAnimation(.easeOut(duration: 0.18)) {
+                    difference.apply(to: &photos)
+                }
+            }
         }
     }
 
@@ -522,7 +527,7 @@ struct EditEntrySheet: View {
             } else {
                 Color.gray.opacity(0.2)
             }
-        case .new(let data):
+        case .new(_, let data):
             if let ui = UIImage(data: data) {
                 Image(uiImage: ui).resizable().scaledToFill()
             } else {
@@ -531,23 +536,17 @@ struct EditEntrySheet: View {
         }
     }
 
-    private func removePhoto(at index: Int) {
-        guard photos.count > 1, index < photos.count else { return }
+    private func removePhoto(_ photo: EditPhoto) {
+        guard photos.count > 1 else { return }
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        photos.remove(at: index)
-    }
-
-    private func movePhoto(from: Int, to: Int) {
-        guard from < photos.count, to >= 0, to < photos.count else { return }
-        let item = photos.remove(at: from)
-        photos.insert(item, at: to)
+        photos.removeAll { $0.id == photo.id }
     }
 
     private func addPickedPhotos(_ items: [PhotosPickerItem]) async {
         for item in items {
             guard photos.count < JournalEntry.maxPhotos else { break }
             if let data = try? await item.loadTransferable(type: Data.self) {
-                photos.append(.new(data))
+                photos.append(.new(UUID(), data))
             }
         }
     }
@@ -572,7 +571,7 @@ struct EditEntrySheet: View {
             switch photo {
             case .existing(let name):
                 finalNames.append(name)
-            case .new(let data):
+            case .new(_, let data):
                 if let name = try? PhotoStore.save(data) {
                     finalNames.append(name)
                 }
@@ -591,6 +590,30 @@ struct EditEntrySheet: View {
 
         entry.photoFileNames = finalNames
         entry.photoFileName = finalNames.first
+
+        // Finalize an in-progress recording so it isn't lost on save.
+        var effectiveVoice = voiceState
+        if voiceRecorder.isRecording, let (url, duration) = voiceRecorder.stop() {
+            effectiveVoice = .recorded(url, duration)
+        }
+
+        // Persist voice-note edits: keep existing, save a new recording, or remove.
+        let previousAudio = entry.audioFileName
+        switch effectiveVoice {
+        case .none:
+            if let previousAudio { AudioStore.delete(previousAudio) }
+            entry.audioFileName = nil
+            entry.audioDuration = 0
+        case .existing:
+            break // unchanged
+        case .recorded(let url, let duration):
+            if let name = try? AudioStore.save(from: url) {
+                if let previousAudio { AudioStore.delete(previousAudio) }
+                entry.audioFileName = name
+                entry.audioDuration = duration
+            }
+        }
+
         try? state.modelContext?.save()
     }
 }
@@ -599,12 +622,14 @@ struct EditEntrySheet: View {
 
 private enum EditPhoto: Identifiable {
     case existing(String)
-    case new(Data)
+    /// Newly picked photo. Carries a UUID so identity is stable across reorders
+    /// and unique even when the same image is picked twice.
+    case new(UUID, Data)
 
     var id: String {
         switch self {
         case .existing(let name): return "f:\(name)"
-        case .new(let data): return "n:\(data.hashValue)"
+        case .new(let uuid, _): return "n:\(uuid.uuidString)"
         }
     }
 }

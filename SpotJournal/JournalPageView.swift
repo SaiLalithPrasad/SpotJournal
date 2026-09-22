@@ -39,6 +39,20 @@ struct JournalPageView: View {
         }
     }
 
+    /// Voice-note player shown on the page when the entry has audio.
+    @ViewBuilder
+    private var voiceNoteView: some View {
+        if let name = entry.audioFileName {
+            VoiceNotePlayerView(
+                url: AudioStore.url(for: name),
+                duration: entry.audioDuration,
+                theme: theme
+            )
+            .padding(.top, 4)
+            .padding(.bottom, 24)
+        }
+    }
+
     @ViewBuilder
     private func tagsAndMoodsView(centered: Bool) -> some View {
         VStack(spacing: 10) {
@@ -94,6 +108,8 @@ struct JournalPageView: View {
                 )
                 .padding(.bottom, 28)
 
+                voiceNoteView
+
                 CaptionContentView(
                     text: entry.caption,
                     fontStyle: captionFontStyle,
@@ -136,6 +152,8 @@ struct JournalPageView: View {
                 .padding(.leading, -6)
                 .padding(.bottom, 28)
 
+                voiceNoteView
+
                 CaptionContentView(
                     text: entry.caption,
                     fontStyle: captionFontStyle,
@@ -174,6 +192,8 @@ struct JournalPageView: View {
                     onTap: openZoom
                 )
                 .padding(.bottom, 24)
+
+                voiceNoteView
 
                 // Hairline rule
                 Rectangle()

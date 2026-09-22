@@ -60,9 +60,12 @@ class AppState {
 
     // MARK: - Capture Flow
 
-    var pendingPhotos: [Data] = []
+    var pendingPhotos: [PendingPhoto] = []
     var pendingDate: Date?
     var pendingPlace: String = ""
+    /// Temp URL of a voice note recorded during the capture flow (nil if none).
+    var pendingAudioURL: URL?
+    var pendingAudioDuration: Double = 0
 
     // MARK: - SwiftData
 
@@ -124,7 +127,7 @@ class AppState {
         guard !pendingPhotos.isEmpty, let context = modelContext else { return }
 
         // Persist all pending photos; keep only the ones that saved successfully.
-        let filenames = pendingPhotos.compactMap { try? PhotoStore.save($0) }
+        let filenames = pendingPhotos.compactMap { try? PhotoStore.save($0.data) }
         guard !filenames.isEmpty else { return }
 
         // Set importedAt when the photo's date differs from now (gallery import of old photo)
@@ -141,12 +144,21 @@ class AppState {
         )
         entry.tags = tags
         entry.moods = moods
+
+        // Persist an optional voice note recorded during this capture.
+        if let audioURL = pendingAudioURL, let audioName = try? AudioStore.save(from: audioURL) {
+            entry.audioFileName = audioName
+            entry.audioDuration = pendingAudioDuration
+        }
+
         context.insert(entry)
         try? context.save()
         UINotificationFeedbackGenerator().notificationOccurred(.success)
 
         screen = .saved
         pendingPhotos = []
+        pendingAudioURL = nil
+        pendingAudioDuration = 0
 
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(1.4))
@@ -233,6 +245,9 @@ class AppState {
             // Delete photo files for real captures
             for filename in entry.resolvedFileNames {
                 PhotoStore.delete(filename)
+            }
+            if let audio = entry.audioFileName {
+                AudioStore.delete(audio)
             }
             context.delete(entry)
         }

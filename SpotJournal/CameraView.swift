@@ -289,9 +289,9 @@ struct CameraView: View {
     private var photoTray: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach(Array(state.pendingPhotos.enumerated()), id: \.offset) { index, data in
+                ForEach(state.pendingPhotos) { photo in
                     ZStack(alignment: .topTrailing) {
-                        if let ui = UIImage(data: data) {
+                        if let ui = UIImage(data: photo.data) {
                             Image(uiImage: ui)
                                 .resizable()
                                 .scaledToFill()
@@ -305,8 +305,7 @@ struct CameraView: View {
 
                         Button {
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            guard index < state.pendingPhotos.count else { return }
-                            state.pendingPhotos.remove(at: index)
+                            state.pendingPhotos.removeAll { $0.id == photo.id }
                         } label: {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.system(size: 17))
@@ -337,7 +336,7 @@ struct CameraView: View {
     private func addCameraPhoto(_ data: Data) {
         guard state.pendingPhotos.count < JournalEntry.maxPhotos else { return }
         let wasEmpty = state.pendingPhotos.isEmpty
-        state.pendingPhotos.append(data)
+        state.pendingPhotos.append(PendingPhoto(data: data))
         if wasEmpty {
             state.pendingDate = Date()
             state.pendingPlace = locationService.currentPlace
@@ -361,7 +360,7 @@ struct CameraView: View {
             guard let data = try? await item.loadTransferable(type: Data.self) else { continue }
 
             let wasEmpty = state.pendingPhotos.isEmpty
-            state.pendingPhotos.append(data)
+            state.pendingPhotos.append(PendingPhoto(data: data))
 
             // The entry has a single date/place — seed it from the first photo added.
             if wasEmpty {
