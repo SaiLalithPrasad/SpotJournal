@@ -70,8 +70,15 @@ struct HomeView: View {
             }
 
             // Bottom action bar — View entries (70%) + Camera (30%)
-            VStack {
+            VStack(spacing: 12) {
                 Spacer()
+
+                if let pinned = state.pinnedEntry {
+                    pinnedPill(pinned, theme: theme)
+                        .padding(.horizontal, 24)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+
                 GeometryReader { geo in
                     HStack(spacing: 0) {
                         Button {
@@ -106,6 +113,59 @@ struct HomeView: View {
                 .padding(.horizontal, 24)
                 .padding(.bottom, 46)
             }
+            .animation(.easeInOut(duration: 0.2), value: state.pinnedEntryId)
         }
+    }
+
+    /// Shortcut back to the pinned entry: tap to open, × to unpin.
+    private func pinnedPill(_ pinned: JournalEntry, theme: JournalTheme) -> some View {
+        HStack(spacing: 10) {
+            Button {
+                state.openPinned()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "pin.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(theme.accent)
+                    Text(pinnedTitle(pinned))
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(theme.fg1)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                }
+                .contentShape(Rectangle())
+            }
+            .accessibilityLabel("Open pinned entry: \(pinnedTitle(pinned))")
+
+            Button {
+                state.togglePin(pinned.id)
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(theme.fg3)
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel("Unpin")
+        }
+        .padding(.leading, 16)
+        .padding(.trailing, 8)
+        .padding(.vertical, 8)
+        .background(
+            Capsule().fill(.ultraThinMaterial)
+                .overlay(Capsule().stroke(theme.border1, lineWidth: 1))
+        )
+    }
+
+    /// First line of the caption, falling back to the place for caption-less entries.
+    private func pinnedTitle(_ entry: JournalEntry) -> String {
+        let firstLine = entry.caption
+            .split(separator: "\n", omittingEmptySubsequences: true)
+            .first
+            .map { String($0).trimmingCharacters(in: .whitespaces) } ?? ""
+        if firstLine.isEmpty || firstLine == "\u{2014}" {
+            return entry.place.isEmpty ? "Pinned entry" : entry.place
+        }
+        return firstLine
     }
 }

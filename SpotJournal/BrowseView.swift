@@ -3,23 +3,47 @@ import SwiftData
 
 struct BrowseView: View {
     @Environment(AppState.self) private var state
-    @State private var calendarOpen = false
     @State private var currentMonth = Date()
-    @State private var selectedDate: Date?
-    @State private var searchText = ""
-    @State private var selectedFilterTags: [Tag] = []
-    @State private var selectedFilterMoods: [Mood] = []
     @State private var entryToDelete: JournalEntry?
+
+    // Filters are stored in AppState so they survive opening an entry and coming back.
+    private var calendarOpen: Bool {
+        get { state.browseFilters.calendarOpen }
+        nonmutating set { state.browseFilters.calendarOpen = newValue }
+    }
+    private var selectedDate: Date? {
+        get { state.browseFilters.date }
+        nonmutating set { state.browseFilters.date = newValue }
+    }
+    private var searchText: String {
+        get { state.browseFilters.searchText }
+        nonmutating set { state.browseFilters.searchText = newValue }
+    }
+    private var selectedFilterTags: [Tag] {
+        get { state.browseFilters.tags }
+        nonmutating set { state.browseFilters.tags = newValue }
+    }
+    private var selectedFilterMoods: [Mood] {
+        get { state.browseFilters.moods }
+        nonmutating set { state.browseFilters.moods = newValue }
+    }
+    private var voiceOnly: Bool {
+        get { state.browseFilters.voiceOnly }
+        nonmutating set { state.browseFilters.voiceOnly = newValue }
+    }
 
     var body: some View {
         let theme = state.theme
         let filtered = filteredEntries
         let groups = groupEntries(filtered)
+        @Bindable var state = state
 
         VStack(spacing: 0) {
             // Header
             HStack {
                 Button {
+                    // Filters persist across entry ↔ list; leaving Browse starts fresh next time.
+                    state.browseFilters = BrowseFilters()
                     state.screen = .home
                 } label: {
                     Image(systemName: "chevron.left")
@@ -39,6 +63,21 @@ struct BrowseView: View {
                 Spacer()
 
                 HStack(spacing: 6) {
+                    Button {
+                        withAnimation(.easeOut(duration: 0.12)) {
+                            voiceOnly.toggle()
+                        }
+                    } label: {
+                        Image(systemName: "waveform")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(voiceOnly ? theme.accent : theme.fg1)
+                            .frame(width: 36, height: 36)
+                            .background(
+                                Circle().fill(voiceOnly ? theme.accentSoft : theme.surfaceSunken)
+                            )
+                    }
+                    .accessibilityLabel(voiceOnly ? "Show all journals" : "Show only journals with voice notes")
+
                     Button {
                         withAnimation(.easeOut(duration: 0.16)) {
                             calendarOpen.toggle()
@@ -72,36 +111,90 @@ struct BrowseView: View {
             .padding(.bottom, 10)
             .background(theme.bg)
 
-            // Search bar
+            // Search bar + clear-filters button
             HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 14))
-                    .foregroundColor(theme.fg3)
-                TextField("Search captions, places, tags, or moods\u{2026}", text: $searchText)
-                    .font(.system(size: 15))
-                    .foregroundColor(theme.fg1)
-                if !searchText.isEmpty {
-                    Button {
-                        searchText = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(theme.fg3)
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 14))
+                        .foregroundColor(theme.fg3)
+                    TextField("Search captions, places, tags, or moods\u{2026}", text: $state.browseFilters.searchText)
+                        .font(.system(size: 15))
+                        .foregroundColor(theme.fg1)
+                    if !searchText.isEmpty {
+                        Button {
+                            searchText = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(theme.fg3)
+                        }
                     }
                 }
+                .padding(10)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(theme.surfaceSunken)
+                )
+
+                // Clear all filters (search, date, tags, moods, voice notes)
+                if state.browseFilters.isActive {
+                    Button {
+                        withAnimation(.easeOut(duration: 0.12)) {
+                            let calendarOpen = state.browseFilters.calendarOpen
+                            state.browseFilters = BrowseFilters()
+                            state.browseFilters.calendarOpen = calendarOpen
+                        }
+                    } label: {
+                        Image(systemName: "line.3.horizontal.decrease")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(theme.accent)
+                            .frame(width: 36, height: 36)
+                            .background(Circle().fill(theme.accentSoft))
+                            .overlay(alignment: .topTrailing) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(theme.fgOnAccent, theme.accent)
+                                    .offset(x: 2, y: -2)
+                            }
+                    }
+                    .accessibilityLabel("Clear filters")
+                    .transition(.scale.combined(with: .opacity))
+                }
             }
-            .padding(10)
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(theme.surfaceSunken)
-            )
             .padding(.horizontal, 16)
             .padding(.bottom, 8)
 
             // Active filter chips
-            if selectedDate != nil || !selectedFilterTags.isEmpty || !selectedFilterMoods.isEmpty {
+            if voiceOnly || selectedDate != nil || !selectedFilterTags.isEmpty || !selectedFilterMoods.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
+                        // Voice note chip
+                        if voiceOnly {
+                            HStack(spacing: 4) {
+                                Image(systemName: "waveform")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(theme.accent)
+                                Text("Voice notes")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(theme.accent)
+                                Button {
+                                    withAnimation(.easeOut(duration: 0.12)) {
+                                        voiceOnly = false
+                                    }
+                                } label: {
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(theme.fg3)
+                                        .frame(width: 22, height: 22)
+                                        .contentShape(Rectangle())
+                                }
+                            }
+                            .padding(.leading, 12)
+                            .padding(.trailing, 4)
+                            .padding(.vertical, 4)
+                            .background(Capsule().fill(theme.accentSoft))
+                        }
+
                         // Date chip
                         if let date = selectedDate {
                             HStack(spacing: 4) {
@@ -280,7 +373,7 @@ struct BrowseView: View {
                 VStack(spacing: 0) {
                     MiniCalendarView(
                         entries: state.entries,
-                        selectedDate: $selectedDate,
+                        selectedDate: $state.browseFilters.date,
                         currentMonth: $currentMonth,
                         theme: theme
                     )
@@ -336,6 +429,7 @@ struct BrowseView: View {
                             ForEach(group.items) { entry in
                                 EntryCardView(entry: entry, theme: theme) {
                                     state.browseAnchorId = entry.id
+                                    state.browseEntryIds = filtered.map(\.id)
                                     state.screen = .entry(entry.id)
                                 }
                                 .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
@@ -380,9 +474,10 @@ struct BrowseView: View {
             Text("This entry and its photo will be permanently deleted.")
         }
         .onAppear {
-            if let first = state.entries.first {
+            // Show the filtered day's month when returning with a date filter, else the latest entry's.
+            if let focus = selectedDate ?? state.entries.first?.date {
                 let cal = Calendar.current
-                currentMonth = cal.date(from: cal.dateComponents([.year, .month], from: first.date)) ?? Date()
+                currentMonth = cal.date(from: cal.dateComponents([.year, .month], from: focus)) ?? Date()
             }
         }
     }
@@ -391,6 +486,11 @@ struct BrowseView: View {
 
     private var filteredEntries: [JournalEntry] {
         var result = state.entries.sorted { $0.date > $1.date }
+
+        // Only entries that carry a voice note
+        if voiceOnly {
+            result = result.filter(\.hasAudio)
+        }
 
         // Filter by selected date
         if let date = selectedDate {
@@ -463,6 +563,9 @@ struct BrowseView: View {
         }
         if let audio = entry.audioFileName {
             AudioStore.delete(audio)
+        }
+        if state.isPinned(entry.id) {
+            state.pinnedEntryId = nil
         }
         context.delete(entry)
         try? context.save()

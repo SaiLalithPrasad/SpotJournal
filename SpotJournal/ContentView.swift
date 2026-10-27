@@ -107,7 +107,7 @@ struct EntryDetailView: View {
 
     var body: some View {
         let theme = state.theme
-        let sortedEntries = state.entries.sorted { $0.date > $1.date }
+        let sortedEntries = pagedEntries
 
         ZStack(alignment: .top) {
             TabView(selection: $currentId) {
@@ -131,6 +131,14 @@ struct EntryDetailView: View {
 
                 Spacer()
 
+                IconChipButton(
+                    systemName: state.isPinned(currentId) ? "pin.fill" : "pin",
+                    theme: theme
+                ) {
+                    state.togglePin(currentId)
+                }
+                .accessibilityLabel(state.isPinned(currentId) ? "Unpin entry" : "Pin entry")
+
                 IconChipButton(systemName: "pencil", theme: theme) {
                     editingEntry = sortedEntries.first { $0.id == currentId }
                 }
@@ -145,6 +153,16 @@ struct EntryDetailView: View {
             EditEntrySheet(entry: entry)
                 .environment(state)
         }
+    }
+
+    /// Entries to page through: Browse's filtered snapshot when present, otherwise all.
+    /// The snapshot is by id, so editing an entry's tags mid-swipe doesn't drop it.
+    private var pagedEntries: [JournalEntry] {
+        let all = state.entries.sorted { $0.date > $1.date }
+        guard let ids = state.browseEntryIds else { return all }
+        let byId = Dictionary(all.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let scoped = ids.compactMap { byId[$0] }
+        return scoped.isEmpty ? all : scoped
     }
 }
 

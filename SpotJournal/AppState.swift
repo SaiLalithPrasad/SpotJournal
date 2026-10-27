@@ -19,6 +19,21 @@ enum AppScreen: Equatable {
     }
 }
 
+/// Browse list filters. Lives in AppState so filters survive opening an entry
+/// and navigating back (BrowseView is recreated on each visit).
+struct BrowseFilters {
+    var searchText = ""
+    var tags: [Tag] = []
+    var moods: [Mood] = []
+    var date: Date?
+    var voiceOnly = false
+    var calendarOpen = false
+
+    var isActive: Bool {
+        !searchText.isEmpty || !tags.isEmpty || !moods.isEmpty || date != nil || voiceOnly
+    }
+}
+
 enum NavDirection {
     case forward
     case backward
@@ -43,6 +58,11 @@ class AppState {
     var name: String {
         didSet { UserDefaults.standard.set(name, forKey: "name") }
     }
+    /// Entry temporarily pinned for quick access from Home (e.g. a recipe while cooking).
+    /// Persisted so it survives the app being terminated in the background.
+    var pinnedEntryId: String? {
+        didSet { UserDefaults.standard.set(pinnedEntryId, forKey: "pinnedEntryId") }
+    }
 
     // MARK: - Navigation
 
@@ -57,6 +77,10 @@ class AppState {
 
     /// Entry id to restore the Browse scroll position to after viewing an entry.
     var browseAnchorId: String?
+    /// Ordered ids of Browse's filtered list when an entry was opened from it, so
+    /// swiping in the entry view stays within the filter. nil pages through all entries.
+    var browseEntryIds: [String]?
+    var browseFilters = BrowseFilters()
 
     // MARK: - Capture Flow
 
@@ -110,6 +134,29 @@ class AppState {
         return try? context.fetch(descriptor).first
     }
 
+    // MARK: - Pinning
+
+    /// The pinned entry, or nil if nothing is pinned or the entry no longer exists.
+    var pinnedEntry: JournalEntry? {
+        _ = refreshTrigger
+        guard let id = pinnedEntryId else { return nil }
+        return entryById(id)
+    }
+
+    func isPinned(_ id: String) -> Bool { pinnedEntryId == id }
+
+    /// Pins the entry (replacing any previous pin), or unpins it if already pinned.
+    func togglePin(_ id: String) {
+        pinnedEntryId = isPinned(id) ? nil : id
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+
+    func openPinned() {
+        guard let entry = pinnedEntry else { return }
+        browseEntryIds = nil
+        screen = .entry(entry.id)
+    }
+
     // MARK: - Init
 
     init() {
@@ -119,6 +166,7 @@ class AppState {
         self.captionFont = CaptionFont(rawValue: defaults.string(forKey: "captionFont") ?? "") ?? .serif
         self.layout = LayoutStyle(rawValue: defaults.string(forKey: "layout") ?? "") ?? .classic
         self.name = defaults.string(forKey: "name") ?? ""
+        self.pinnedEntryId = defaults.string(forKey: "pinnedEntryId")
     }
 
     // MARK: - Actions
@@ -196,6 +244,8 @@ class AppState {
         for entry in tag.entries {
             entry.tags.removeAll { $0.id == tag.id }
         }
+        // Don't hold a deleted model in the Browse filters
+        browseFilters.tags.removeAll { $0.id == tag.id }
         context.delete(tag)
         try? context.save()
     }
@@ -234,6 +284,7 @@ class AppState {
         for entry in mood.entries {
             entry.moods.removeAll { $0.id == mood.id }
         }
+        browseFilters.moods.removeAll { $0.id == mood.id }
         context.delete(mood)
         try? context.save()
     }
@@ -252,6 +303,7 @@ class AppState {
             context.delete(entry)
         }
         try? context.save()
+        pinnedEntryId = nil
         screen = .home
     }
 }
