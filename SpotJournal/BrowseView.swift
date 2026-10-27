@@ -139,11 +139,7 @@ struct BrowseView: View {
                 // Clear all filters (search, date, tags, moods, voice notes)
                 if state.browseFilters.isActive {
                     Button {
-                        withAnimation(.easeOut(duration: 0.12)) {
-                            let calendarOpen = state.browseFilters.calendarOpen
-                            state.browseFilters = BrowseFilters()
-                            state.browseFilters.calendarOpen = calendarOpen
-                        }
+                        clearFilters()
                     } label: {
                         Image(systemName: "line.3.horizontal.decrease")
                             .font(.system(size: 15, weight: .medium))
@@ -413,13 +409,27 @@ struct BrowseView: View {
 
             // Entry list
             if filtered.isEmpty {
-                VStack {
+                VStack(spacing: 14) {
                     Spacer()
-                    Text(state.entries.isEmpty ? "Nothing yet. Shoot your first." : "No entries match your search.")
+                    Text(emptyMessage)
                         .font(.system(size: 14))
                         .foregroundColor(theme.fg3)
+                        .multilineTextAlignment(.center)
+                    if state.browseFilters.isActive {
+                        Button {
+                            clearFilters()
+                        } label: {
+                            Text("Clear filters")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(theme.accent)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Capsule().fill(theme.accentSoft))
+                        }
+                    }
                     Spacer()
                 }
+                .padding(.horizontal, 32)
                 .frame(maxWidth: .infinity)
             } else {
                 ScrollViewReader { proxy in
@@ -427,9 +437,10 @@ struct BrowseView: View {
                     ForEach(groups, id: \.label) { group in
                         Section {
                             ForEach(group.items) { entry in
-                                EntryCardView(entry: entry, theme: theme) {
+                                EntryCardView(entry: entry, theme: theme, isPinned: state.isPinned(entry.id)) {
                                     state.browseAnchorId = entry.id
                                     state.browseEntryIds = filtered.map(\.id)
+                                    state.entryBackScreen = .browse
                                     state.screen = .entry(entry.id)
                                 }
                                 .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
@@ -483,6 +494,24 @@ struct BrowseView: View {
     }
 
     // MARK: - Filtering
+
+    /// Resets all filters but leaves the calendar open/closed as the user had it.
+    private func clearFilters() {
+        withAnimation(.easeOut(duration: 0.12)) {
+            let calendarOpen = state.browseFilters.calendarOpen
+            state.browseFilters = BrowseFilters()
+            state.browseFilters.calendarOpen = calendarOpen
+        }
+    }
+
+    private var emptyMessage: String {
+        let filters = state.browseFilters
+        if state.entries.isEmpty { return "Nothing yet. Shoot your first." }
+        if !filters.searchText.isEmpty { return "No journals match your search." }
+        let onlyVoice = filters.voiceOnly && filters.tags.isEmpty && filters.moods.isEmpty && filters.date == nil
+        if onlyVoice { return "No journals with voice notes yet." }
+        return "No journals match these filters."
+    }
 
     private var filteredEntries: [JournalEntry] {
         var result = state.entries.sorted { $0.date > $1.date }
@@ -583,6 +612,7 @@ private struct EntryGroup {
 private struct EntryCardView: View {
     let entry: JournalEntry
     let theme: JournalTheme
+    var isPinned: Bool = false
     let onTap: () -> Void
 
     var body: some View {
@@ -606,12 +636,20 @@ private struct EntryCardView: View {
                     .shadow(color: Color(hex: 0x462D14).opacity(0.08), radius: 5, y: 4)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    // Date
-                    Text(dateLabel)
-                        .font(.system(size: 11, design: .serif))
-                        .fontWeight(.medium)
-                        .tracking(0.5)
-                        .foregroundColor(theme.fg2)
+                    // Date (+ pin marker)
+                    HStack(spacing: 6) {
+                        Text(dateLabel)
+                            .font(.system(size: 11, design: .serif))
+                            .fontWeight(.medium)
+                            .tracking(0.5)
+                            .foregroundColor(theme.fg2)
+                        if isPinned {
+                            Image(systemName: "pin.fill")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(theme.accent)
+                                .accessibilityLabel("Pinned")
+                        }
+                    }
 
                     // Caption preview
                     Text(entry.caption)
@@ -767,7 +805,8 @@ private struct MiniCalendarView: View {
 
             // Day of week headers
             LazyVGrid(columns: columns, spacing: 2) {
-                ForEach(daysOfWeek, id: \.self) { day in
+                // Identify by position — letters repeat (T, S), so they can't be the id.
+                ForEach(Array(daysOfWeek.enumerated()), id: \.offset) { _, day in
                     Text(day)
                         .font(.system(size: 9.5, weight: .medium))
                         .tracking(0.1)

@@ -126,14 +126,15 @@ struct EntryDetailView: View {
 
             HStack {
                 IconChipButton(systemName: "chevron.left", theme: theme) {
-                    state.screen = .browse
+                    state.screen = state.entryBackScreen
                 }
 
                 Spacer()
 
                 IconChipButton(
                     systemName: state.isPinned(currentId) ? "pin.fill" : "pin",
-                    theme: theme
+                    theme: theme,
+                    tint: state.isPinned(currentId) ? theme.accent : nil
                 ) {
                     state.togglePin(currentId)
                 }

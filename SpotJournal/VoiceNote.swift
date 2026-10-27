@@ -38,6 +38,9 @@ final class AudioRecorder {
     private var recorder: AVAudioRecorder?
     private var timer: Timer?
 
+    /// Live position read straight from the recorder, for displaying a running clock.
+    var currentTime: TimeInterval { recorder?.currentTime ?? elapsed }
+
     /// Cap recordings so file sizes stay bounded.
     static let maxDuration: TimeInterval = 600 // 10 minutes
 
@@ -70,7 +73,7 @@ final class AudioRecorder {
             recordingURL = tempURL
             isRecording = true
             elapsed = 0
-            timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            let t = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
                 Task { @MainActor in
                     guard let self, let rec = self.recorder else { return }
                     self.elapsed = rec.currentTime
@@ -78,6 +81,9 @@ final class AudioRecorder {
                     if !rec.isRecording { self.finishTimer() }
                 }
             }
+            // .common so the timer keeps firing while the user scrolls the sheet.
+            RunLoop.main.add(t, forMode: .common)
+            timer = t
         } catch {
             isRecording = false
         }
@@ -353,10 +359,13 @@ struct VoiceNoteSection: View {
                 .frame(width: 10, height: 10)
                 .opacity(0.9)
 
-            Text(formatAudioTime(recorder.elapsed))
-                .font(.system(size: 15, weight: .semibold))
-                .monospacedDigit()
-                .foregroundColor(theme.fg1)
+            // Re-read the recorder's own clock each tick rather than relying on timer callbacks.
+            TimelineView(.periodic(from: .now, by: 0.25)) { _ in
+                Text(formatAudioTime(recorder.currentTime))
+                    .font(.system(size: 15, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundColor(theme.fg1)
+            }
 
             Spacer()
 

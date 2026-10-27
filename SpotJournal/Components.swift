@@ -335,13 +335,15 @@ struct PageTimestampView: View {
 struct IconChipButton: View {
     let systemName: String
     let theme: JournalTheme
+    /// Icon color override (e.g. accent for an "on" state); defaults to fg1.
+    var tint: Color? = nil
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: 15, weight: .medium))
-                .foregroundColor(theme.fg1)
+                .foregroundColor(tint ?? theme.fg1)
                 .frame(width: 36, height: 36)
                 .background(
                     Circle()

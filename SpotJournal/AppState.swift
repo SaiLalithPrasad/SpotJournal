@@ -80,6 +80,8 @@ class AppState {
     /// Ordered ids of Browse's filtered list when an entry was opened from it, so
     /// swiping in the entry view stays within the filter. nil pages through all entries.
     var browseEntryIds: [String]?
+    /// Where the entry view's back button returns to (Home when opened from the pinned pill).
+    var entryBackScreen: AppScreen = .browse
     var browseFilters = BrowseFilters()
 
     // MARK: - Capture Flow
@@ -154,6 +156,7 @@ class AppState {
     func openPinned() {
         guard let entry = pinnedEntry else { return }
         browseEntryIds = nil
+        entryBackScreen = .home
         screen = .entry(entry.id)
     }
 
